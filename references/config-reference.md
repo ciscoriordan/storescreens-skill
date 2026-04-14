@@ -1,0 +1,115 @@
+# storescreens.yml — Full Config Reference
+
+```yaml
+# Project — specify one
+project: "MyApp.xcodeproj"
+# workspace: "MyApp.xcworkspace"
+
+scheme: "MyApp"
+
+devices:
+  - simulator: "iPhone 17 Pro Max"   # App Store 6.9"
+  - simulator: "iPhone 17 Pro"       # App Store 6.3"
+  - simulator: "iPad Pro 13-inch (M5)"
+  # macOS: tests run natively, no simulator needed
+  # - simulator: "Mac 2560x1600"
+  #   platform: macOS
+
+# Appearances — light, dark (default: light only)
+appearances:
+  - light
+  # - dark
+
+# Locales — runs full capture once per locale (optional)
+# locales:
+#   - en-US
+#   - ja
+#   - de-DE
+
+output_dir: "./storescreens-output"
+
+# Run history: 1 = overwrite (default), 0 = keep all, N = keep last N
+# keep_runs: 1
+
+# XCTest mode — which test class to run
+test_target: MyAppUITests
+test_class: ScreenshotTests
+
+# Filter by screenshot name (optional — capture only these)
+# screenshots:
+#   - "01_Home"
+#   - "02_Detail"
+
+# Preflight iPad-safety scan before capture (default: true)
+# preflight: true
+
+# Upload to storescreens.app after capture (default: false)
+# upload: true
+```
+
+## Device Names & App Store Connect Size Mapping
+
+Use `storescreens list` to see available simulators and their App Store size mappings.
+
+App Store Connect iPhone slots and the simulators that fill them:
+
+| App Store Connect slot | storescreens size | Simulator |
+|------------------------|-------------------|-----------|
+| 6.9" (primary required) | **6.9"** | `iPhone 17 Pro Max` |
+| 6.5" (auto-filled from 6.9") ¹ | **6.5"** | `iPhone 11 Pro Max`, `iPhone Xs Max` ² |
+| 6.3" | **6.3"** | `iPhone 17 Pro`, `iPhone 17`, `iPhone Air` |
+| 6.1" | **6.1"** | `iPhone 16`, `iPhone 15` |
+| 5.5" | **5.5"** | `iPhone 8 Plus` |
+| 4.7" | **4.7"** | `iPhone SE (3rd generation)` |
+
+**No 6.7" slot exists in App Store Connect.** Do not use `iPhone 16 Plus`.
+
+**¹ 6.5" is auto-filled** — when 6.9" screenshots are provided, App Store Connect automatically uses them for the 6.5" slot. You only need a dedicated 6.5" simulator if you want distinct screenshots there.
+
+**² 6.5" (1242×2688)** is the iPhone XS Max / 11 Pro Max resolution. No current simulator produces it — only these older simulators do.
+
+iPad slots:
+
+| App Store Connect slot | storescreens size | Simulator |
+|------------------------|-------------------|-----------|
+| 13" (primary required) | **iPad Pro 13"** | `iPad Pro 13-inch (M5)` |
+| 11" | **iPad Pro 11"** | `iPad Pro 11-inch (M5)` |
+| 12.9" (iPad Pro 2nd Gen) | **iPad Pro 12.9"** | `iPad Pro 12.9-inch (2nd generation)` ¹ |
+| 10.5" | **iPad 10.5"** | `iPad Air (3rd generation)` ¹ |
+| 9.7" | **iPad 9.7"** | `iPad (6th generation)` ¹ |
+
+**Recommend `iPad Pro 13-inch (M5)` as the starting point** — it covers the required 13" slot. Add others only if needed.
+
+**¹ Older slots** (12.9", 10.5", 9.7") require older simulator runtimes that may not be installed. Most apps only need 13".
+
+Mac App Store slots:
+
+| Mac App Store slot | storescreens size | Notes |
+|--------------------|-------------------|-------|
+| 2880x1800 | **Mac 2880x1800** | 15" Retina (MacBook Pro 15") |
+| 2560x1600 | **Mac 2560x1600** | 13" Retina (MacBook Pro 13", Air M1+) |
+| 1440x900 | **Mac 1440x900** | Non-Retina |
+| 1280x800 | **Mac 1280x800** | Minimum required |
+
+macOS devices don't use simulators. Add `platform: macOS` to the device config. XCUITests run natively on the Mac.
+
+Sources:
+- [Apple: Screenshot specifications](https://developer.apple.com/help/app-store-connect/reference/app-information/screenshot-specifications/)
+- [Apple Changed App Store Connect Screenshot Sizes (Sep 2024)](https://www.iwantanelephant.com/blog/2024/09/12/important-update-apple-changed-app-store-connect-screenshot-requirements/)
+
+Common iPad simulators:
+- `iPad Pro 13-inch (M5)` → iPad Pro 13"
+- `iPad Pro 11-inch (M5)` → iPad Pro 11"
+
+## `storescreens capture` Flags
+
+| Flag | Description |
+|------|-------------|
+| `--mode xctest\|simple` | Capture mode (default: `xctest`) |
+| `--config PATH` | Config file path (default: `storescreens.yml`) |
+| `--output DIR` | Override output directory |
+| `--locale LOCALE` | Override locales (repeatable) |
+| `--retries N` | Retry failed test runs per device |
+| `--keep-alive` | Keep simulators running after capture |
+| `--skip-check` | Skip preflight source code check |
+| `--verbose` | Show full xcodebuild output |
