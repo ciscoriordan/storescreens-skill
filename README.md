@@ -1,12 +1,8 @@
-![StoreScreens](assets/banner.png)
-
 # storescreens-skill
 
-Agent skill for [storescreens-cli](https://github.com/ciscoriordan/storescreens-cli) - the CLI that captures App Store screenshots across every required device size in one command.
+Agent skill for [storescreens-cli](https://github.com/ciscoriordan/storescreens-cli), the CLI that captures App Store screenshots across every required device size in one command.
 
-This skill lets an AI coding assistant handle the entire setup: installing the CLI, detecting your Xcode project, configuring devices, generating UI tests, and running captures. It also supports **targeted screenshots** for quick visual checks during development - capture the current simulator screen in under a second without building or running tests.
-
-<video src="https://github.com/user-attachments/assets/fb0c0cf1-8fdc-4e28-98c9-1baded6dd947" controls></video>
+This skill lets an AI coding assistant handle the entire setup: installing the CLI, detecting your Xcode project, configuring devices, generating UI tests, and running captures. It also supports **targeted screenshots** for quick visual checks during development, capturing the current simulator screen in under a second without building or running tests.
 
 ## Prerequisites
 
@@ -24,7 +20,7 @@ Point your AI coding assistant at `SKILL.md` or load `storescreens.skill` as a s
 4. Sets up a UI test target and `ScreenshotTests.swift` with navigation for each screen
 5. Configures screenshot mode in the app (pro access, disabled animations, sample data)
 6. Adds accessibility identifiers for reliable element targeting
-7. Runs preflight checks — errors and warnings are surfaced before capture, with a prompt to fix or continue
+7. Runs preflight checks - errors and warnings are surfaced before capture, with a prompt to fix or continue
 8. Runs capture (via MCP tools when available, CLI otherwise)
 9. Troubleshoots failures using build logs
 
@@ -60,14 +56,14 @@ storescreens complements [Xcode's built-in MCP server](https://developer.apple.c
 
 ## Contents
 
-- **`SKILL.md`** — Step-by-step instructions for the agent
-- **`storescreens.skill`** — Packaged skill archive (SKILL.md + references + assets)
-- **`references/config-reference.md`** — Full `storescreens.yml` config schema
-- **`assets/ScreenshotTests.swift.template`** — Starter UI test template
+- **`SKILL.md`** - Step-by-step instructions for the agent
+- **`storescreens.skill`** - Packaged skill archive (SKILL.md + references + assets)
+- **`references/config-reference.md`** - Full `storescreens.yml` config schema
+- **`assets/ScreenshotTests.swift.template`** - Starter UI test template
 
 ## Related
 
-- [storescreens-cli](https://github.com/ciscoriordan/storescreens-cli) — The CLI tool this skill automates
+- [storescreens-cli](https://github.com/ciscoriordan/storescreens-cli) - The CLI tool this skill automates
 
 ## License
 

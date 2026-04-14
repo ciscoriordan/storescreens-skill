@@ -1,7 +1,7 @@
-# storescreens.yml — Full Config Reference
+# storescreens.yml - Full Config Reference
 
 ```yaml
-# Project — specify one
+# Project - specify one
 project: "MyApp.xcodeproj"
 # workspace: "MyApp.xcworkspace"
 
@@ -15,12 +15,12 @@ devices:
   # - simulator: "Mac 2560x1600"
   #   platform: macOS
 
-# Appearances — light, dark (default: light only)
+# Appearances - light, dark (default: light only)
 appearances:
   - light
   # - dark
 
-# Locales — runs full capture once per locale (optional)
+# Locales - runs full capture once per locale (optional)
 # locales:
 #   - en-US
 #   - ja
@@ -31,11 +31,11 @@ output_dir: "./storescreens-output"
 # Run history: 1 = overwrite (default), 0 = keep all, N = keep last N
 # keep_runs: 1
 
-# XCTest mode — which test class to run
+# XCTest mode - which test class to run
 test_target: MyAppUITests
 test_class: ScreenshotTests
 
-# Filter by screenshot name (optional — capture only these)
+# Filter by screenshot name (optional - capture only these)
 # screenshots:
 #   - "01_Home"
 #   - "02_Detail"
@@ -64,9 +64,9 @@ App Store Connect iPhone slots and the simulators that fill them:
 
 **No 6.7" slot exists in App Store Connect.** Do not use `iPhone 16 Plus`.
 
-**¹ 6.5" is auto-filled** — when 6.9" screenshots are provided, App Store Connect automatically uses them for the 6.5" slot. You only need a dedicated 6.5" simulator if you want distinct screenshots there.
+**¹ 6.5" is auto-filled** - when 6.9" screenshots are provided, App Store Connect automatically uses them for the 6.5" slot. You only need a dedicated 6.5" simulator if you want distinct screenshots there.
 
-**² 6.5" (1242×2688)** is the iPhone XS Max / 11 Pro Max resolution. No current simulator produces it — only these older simulators do.
+**² 6.5" (1242×2688)** is the iPhone XS Max / 11 Pro Max resolution. No current simulator produces it - only these older simulators do.
 
 iPad slots:
 
@@ -78,7 +78,7 @@ iPad slots:
 | 10.5" | **iPad 10.5"** | `iPad Air (3rd generation)` ¹ |
 | 9.7" | **iPad 9.7"** | `iPad (6th generation)` ¹ |
 
-**Recommend `iPad Pro 13-inch (M5)` as the starting point** — it covers the required 13" slot. Add others only if needed.
+**Recommend `iPad Pro 13-inch (M5)` as the starting point** - it covers the required 13" slot. Add others only if needed.
 
 **¹ Older slots** (12.9", 10.5", 9.7") require older simulator runtimes that may not be installed. Most apps only need 13".
 
