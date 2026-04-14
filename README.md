@@ -8,9 +8,36 @@ This skill lets an AI coding assistant handle the entire setup: installing the C
 
 The skill installs [storescreens-cli](https://github.com/ciscoriordan/storescreens-cli) via Homebrew automatically if it's not already on your machine. You need **macOS 14+** and **Xcode 16+**.
 
-## Usage
+## Install
 
-Point your AI coding assistant at `SKILL.md` or load `storescreens.skill` as a skill package. Works with any assistant that supports skills or custom instructions.
+### Claude Code
+
+Clone the skill into your user-level skills directory to make it available in every project:
+
+```bash
+git clone https://github.com/ciscoriordan/storescreens-skill.git \
+  ~/.claude/skills/storescreens
+```
+
+Or install per-project by cloning into the project's `.claude/skills/` directory:
+
+```bash
+cd /path/to/your/xcode-project
+git clone https://github.com/ciscoriordan/storescreens-skill.git \
+  .claude/skills/storescreens
+```
+
+Update later with:
+
+```bash
+git -C ~/.claude/skills/storescreens pull
+```
+
+Restart Claude Code after installing. The skill should then appear when you run `/skills` or when an applicable request triggers it (for example, "set up App Store screenshots").
+
+### Other AI coding assistants
+
+For any assistant that supports skill files or custom instructions, point it at `SKILL.md` from this repo, or load `storescreens.skill` (a packaged archive of the skill) as a skill package. Works with any assistant that can read skill definitions.
 
 ## What the Agent Does
 
@@ -46,13 +73,13 @@ See [storescreens-cli](https://github.com/ciscoriordan/storescreens-cli#agent-sk
 
 ## Works with Xcode MCP (Xcode 26.3+)
 
-storescreens complements [Xcode's built-in MCP server](https://developer.apple.com/documentation/xcode/giving-agentic-coding-tools-access-to-xcode). When both are available, the agent picks the right tool for each situation:
+StoreScreens complements [Xcode's built-in MCP server](https://developer.apple.com/documentation/xcode/giving-agentic-coding-tools-access-to-xcode). When both are available, the agent picks the right tool for each situation:
 
 | Tool | What it captures | When to use |
 |------|-----------------|-------------|
 | Xcode `RenderPreview` | A single SwiftUI `#Preview` | Checking an individual view's layout. No simulator needed. |
-| storescreens `take_screenshot` | The full running app in a simulator | Checking the app with real data, navigation, and system chrome. |
-| storescreens `capture` | Full App Store screenshots | Final screenshots across multiple devices, locales, and appearances. |
+| StoreScreens `take_screenshot` | The full running app in a simulator | Checking the app with real data, navigation, and system chrome. |
+| StoreScreens `capture` | Full App Store screenshots | Final screenshots across multiple devices, locales, and appearances. |
 
 ## Contents
 
