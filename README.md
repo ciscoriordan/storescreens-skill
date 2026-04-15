@@ -10,7 +10,21 @@ The skill installs [storescreens-cli](https://github.com/ciscoriordan/storescree
 
 ## Install
 
-### Claude Code
+### One-liner via [skills.sh](https://skills.sh)
+
+The easiest way. The [`skills`](https://github.com/vercel-labs/skills) CLI from Vercel Labs will detect this repo's `SKILL.md` and install it into the right location for your assistant (Claude Code, Cursor, or any other supported tool):
+
+```bash
+npx skills add ciscoriordan/storescreens-skill
+```
+
+Update later with:
+
+```bash
+npx skills update ciscoriordan/storescreens-skill
+```
+
+### Claude Code (manual)
 
 Clone the skill into your user-level skills directory to make it available in every project:
 
@@ -94,4 +108,4 @@ StoreScreens complements [Xcode's built-in MCP server](https://developer.apple.c
 
 ## License
 
-MIT
+[MIT](LICENSE) &copy; 2026 Francisco Riordan
