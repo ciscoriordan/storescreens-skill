@@ -26,6 +26,16 @@ appearances:
 #   - ja
 #   - de-DE
 
+# Custom flags for the HTML preview gallery (optional).
+# Keys are Xcode locale codes. Values are either:
+#   - A filename (without .svg) from ciscoriordan/svg-flags/circle/languages/
+#   - A full https:// URL, used as-is
+# Merged with built-in defaults; your values win on collisions.
+# locale_flags:
+#   en-IN: in-en
+#   hi: in-hi
+#   custom: https://example.com/my-flag.svg
+
 output_dir: "./storescreens-output"
 
 # Run history: 1 = overwrite (default), 0 = keep all, N = keep last N
