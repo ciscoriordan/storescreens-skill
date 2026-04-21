@@ -14,6 +14,15 @@ devices:
   # macOS: tests run natively, no simulator needed
   # - simulator: "Mac 2560x1600"
   #   platform: macOS
+  # Per-device test selection overrides the top-level test_class filter on
+  # this one device. Entries are expanded with test_target/test_class defaults:
+  #   - "testFoo"          -> test_target/test_class/testFoo
+  #   - "Other/testFoo"    -> test_target/Other/testFoo
+  #   - "Tgt/Cls/testFoo"  -> passed through verbatim
+  # Use when a test only renders meaningfully on one form factor.
+  #   - simulator: "iPad Pro 13-inch (M5)"
+  #     tests:
+  #       - testLandscapePolytonic
 
 # Appearances - light, dark (default: light only)
 appearances:
