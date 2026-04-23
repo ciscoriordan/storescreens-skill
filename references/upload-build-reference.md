@@ -55,7 +55,45 @@ app_store_connect:
 | `allow_provisioning_updates` | bool | `true` | Passes `-allowProvisioningUpdates` at archive and export time, letting Xcode contact the Apple dev portal to create or download missing profiles and certs during the run. Turn this off in air-gapped / fully manual setups. |
 | `destination` | string | `generic/platform=iOS` | xcodebuild `-destination` flag for the archive. For tvOS/visionOS/macOS apps, change accordingly. |
 | `output_dir` | string | `./build` | Where the `.xcarchive` and exported `.ipa` are written. Relative paths resolve against the yml directory. |
-| `skip_upload` | bool | `false` | Archive + export + stop. Useful for producing an `.ipa` for manual distribution, inspection, or a different upload pipeline. |
+| `skip_upload` | bool | `false` | Archive + export + stop. Useful for producing an `.ipa` for manual distribution, inspection, or a different upload pipeline. Skipping upload also skips the pre-archive version check. |
+| `auto_bump` | bool | `true` | When the resolver decides the current `MARKETING_VERSION` / `CURRENT_PROJECT_VERSION` won't work (already shipped, or build number collides with TestFlight): rewrite the pbxproj in place (and sync `submit.create_version` in the yml). Set to `false` to error out instead and print the `agvtool` commands to run manually. |
+| `marketing_version` | string | - | Force a specific marketing version. Bypasses the "is it shipped?" check but still validates build number against existing TestFlight builds. |
+| `build_number` | string | - | Force a specific build number. Bypasses the collision check. |
+
+## Automatic version + build resolution
+
+Before archiving, `upload-build` looks at three sources to pick the right `MARKETING_VERSION` and `CURRENT_PROJECT_VERSION`:
+
+1. **Xcode project state**: read from the project's `project.pbxproj` (first `MARKETING_VERSION = X;` / `CURRENT_PROJECT_VERSION = N;` occurrence).
+2. **App Store Connect version state**: `GET /v1/apps/{id}/appStoreVersions?filter[platform]=IOS` to see whether the current marketing version has been shipped (any of `READY_FOR_SALE`, `PROCESSING_FOR_APP_STORE`, `PENDING_APPLE_RELEASE`, `PENDING_DEVELOPER_RELEASE`, `REPLACED_WITH_NEW_VERSION`, `REMOVED_FROM_SALE`).
+3. **TestFlight build history**: `GET /v1/builds?filter[app]=...&filter[preReleaseVersion.version]=X.Y.Z&sort=-version&limit=200` to find the highest existing build number for the current "train".
+
+Resolution rules:
+
+| Current state | Action |
+|---------------|--------|
+| Marketing version already shipped | Bump patch (`1.1.7` -> `1.1.8`), reset build to `1` (or `max(existing-on-new-train) + 1` if any builds already sit on the bumped train). |
+| Marketing version editable, TestFlight has builds, Xcode build <= max | Keep marketing version, bump build to `max(existing) + 1`. |
+| Marketing version editable, TestFlight has builds, Xcode build > max | Use Xcode's build number (already ahead). |
+| Fresh marketing version, no builds | Keep marketing version, keep build (defaults to `1` if non-integer). |
+
+Outcomes:
+
+- When `auto_bump: true` (default): the pbxproj is rewritten in place and `submit.create_version` in the yml is synced. Every occurrence of the two settings across every config of every target is updated (matching `agvtool new-version -all` / `new-marketing-version` semantics). Stale build products under `derived_data_path` are preserved; the next archive picks up the new values.
+- When `auto_bump: false`: errors out with the `agvtool` commands required to make the change manually.
+
+Override rules:
+
+- `marketing_version:` (or `--marketing-version`) fixes the version string. Build validation still runs against the chosen version's builds.
+- `build_number:` (or `--build`) fixes the build number. Collision check is bypassed.
+- Both overrides combined skip the ASC round-trip entirely (no API calls).
+
+Degrade paths:
+
+- **Credentials missing during `--dry-run`**: warn and print whatever's currently in the Xcode project. No ASC calls.
+- **Credentials missing during a live run**: error (upload requires creds anyway).
+- **No `project:` in yml (workspace-only)**: skip the check. `upload-build` can't find a pbxproj to read or rewrite in this setup. Users on workspace-only setups should set `marketing_version:` / `build_number:` explicitly, or pass them on the CLI.
+- **`--skip-upload`**: skip the check entirely. A local archive for manual distribution doesn't care about TestFlight collisions.
 
 ## Non-beta Xcode auto-selection
 

@@ -811,6 +811,24 @@ app_store_connect:
 
 Defaults kick in: scheme from top-level `scheme:`, `configuration: Release`, `export_method: app-store`, auto-detected non-beta Xcode, automatic signing with `-allowProvisioningUpdates`, output at `./build/`. Hand-edit the scaffolded block to turn any of these off.
 
+### 10b.b.1. Automatic version + build resolution
+
+Before archiving, `upload-build` queries App Store Connect for your app's version state and TestFlight build history, then chooses the right `MARKETING_VERSION` / `CURRENT_PROJECT_VERSION` to use:
+
+- **Marketing version already shipped** (state `READY_FOR_SALE`, `PROCESSING_FOR_APP_STORE`, `PENDING_*_RELEASE`, etc.): bumps the patch component (`1.1.7` → `1.1.8`) and resets the build number to `1`.
+- **Marketing version is fresh but TestFlight builds exist**: keeps the version, bumps build number to `max(existing) + 1`.
+- **Fresh version, no builds**: keeps whatever's in the Xcode project (build defaults to `1` if not already set).
+
+The pbxproj is rewritten in place (every occurrence across every config of every target, matching `agvtool new-version -all` / `new-marketing-version`). `submit.create_version` in `storescreens.yml` is also synced so `storescreens submit` picks up the new version automatically. The working tree shows the diff.
+
+Opt out with:
+
+- `--no-auto-bump` (or `upload_build.auto_bump: false`) - error out instead of rewriting. The error message prints the `agvtool` commands to run manually.
+- `--marketing-version X.Y.Z` - force a specific version. Still validates the build number against ASC.
+- `--build N` - force a specific build number.
+
+The version check is **skipped** when `--skip-upload` is set (local archive doesn't care about TestFlight collisions) or when credentials aren't configured during `--dry-run` (graceful degrade with a warning).
+
 ### 10b.c. Verify credentials + Xcode
 
 Same credential check as submit:
@@ -850,7 +868,10 @@ Also usable as a YAML field: `upload_build: { skip_upload: true }`.
 | `--configuration NAME` | Override build configuration (e.g. `Debug`). |
 | `--xcode-path PATH` | Use a specific Xcode. Accepts the `.app` bundle or `Contents/Developer` dir. |
 | `--output-dir PATH` | Override where the `.xcarchive` and exported `.ipa` land. |
-| `--skip-upload` | Archive + export + stop. Leaves the `.ipa` in `output_dir`. |
+| `--skip-upload` | Archive + export + stop. Leaves the `.ipa` in `output_dir`. (Also skips the version check.) |
+| `--marketing-version X.Y.Z` | Force a specific marketing version. Still validates build number against ASC. |
+| `--build N` | Force a specific build number. |
+| `--no-auto-bump` | Error out instead of rewriting the pbxproj when a bump is required. |
 | `--verbose` | Stream full xcodebuild output to stdout instead of filtered lines. |
 | `--config PATH` / `-c PATH` | Path to `storescreens.yml`. |
 
