@@ -1,3 +1,5 @@
+![StoreScreens](assets/banner.png)
+
 # storescreens-skill
 
 Agent skill for [storescreens-cli](https://github.com/ciscoriordan/storescreens-cli), the CLI that captures App Store screenshots across every required device size, renders them into captioned, framed App Store-ready images, and uploads them (with per-locale metadata) straight to App Store Connect, in one command.
