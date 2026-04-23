@@ -2,7 +2,7 @@
 
 `storescreens submit` uploads rendered screenshots and per-locale metadata (name, subtitle, description, keywords, what's new, etc.) to App Store Connect via Apple's official API. It is a wholly separate step from `capture` and `render`: you must have already captured, rendered, and be happy with the output before running `submit`.
 
-The current v1 of `submit` only uploads. It does NOT submit the version for App Review - you still click "Submit for Review" manually in the App Store Connect web UI. See `submit_for_review` below.
+By default `submit` stops after the uploads and leaves review submission to you. Set `submit_for_review: true` in the `submit:` block to also post the version to Apple's `appStoreVersionSubmissions` endpoint once screenshots and metadata are done. See `submit_for_review` below.
 
 ## Top-level shape
 
@@ -20,7 +20,7 @@ app_store_connect:
     create_version: "1.2.0"       # required; created in ASC if missing
     screenshots: true             # default: true
     metadata: true                # default: true
-    submit_for_review: false      # default: false (and currently always a no-op)
+    submit_for_review: false      # default: false. Set true to auto-submit for App Review.
     platform: IOS                 # IOS | MAC_OS | TV_OS | VISION_OS (default IOS)
 ```
 
@@ -40,7 +40,7 @@ app_store_connect:
 | `create_version` | string | - | **Required.** Target App Store version string (e.g. `1.2.0`). If the version doesn't exist in App Store Connect yet, it is created. Can be overridden on the CLI with `--version-override`. |
 | `screenshots` | bool | `true` | Upload rendered screenshots. Set to `false` for a metadata-only submit. Also controllable via `--skip-screenshots`. |
 | `metadata` | bool | `true` | Upload per-locale metadata. Set to `false` for a screenshots-only submit. Also controllable via `--skip-metadata`. |
-| `submit_for_review` | bool | `false` | Reserved for a future release. The current v1 ONLY uploads; it does not submit for App Review. After `submit` completes, go to App Store Connect and click "Submit for Review" yourself. This is intentional: review submission is irreversible without reviewer intervention, so v1 keeps a human in the loop. |
+| `submit_for_review` | bool | `false` | When `true`, `submit` posts to `appStoreVersionSubmissions` after screenshots and metadata have been uploaded successfully. The submission ID is included in the report output. Submission runs only after the uploads succeed, so the version is complete when Apple picks it up. Default is `false` because review submission is irreversible without reviewer intervention, so opt in explicitly when you are ready to ship. |
 | `platform` | string | `IOS` | ASC platform enum: `IOS`, `MAC_OS`, `TV_OS`, `VISION_OS`. Rarely needs override; derive from your app's actual platform. |
 
 ## Metadata directory layout
@@ -58,6 +58,7 @@ metadata/
     release_notes.txt
     support_url.txt
     marketing_url.txt
+    privacy_url.txt
   es-ES/
     description.txt
     release_notes.txt
@@ -68,6 +69,8 @@ metadata/
     keywords.txt
     release_notes.txt
 ```
+
+`privacy_url.txt` is optional. Unlike the other fields it patches the App Info localization (app-level) rather than the version localization, which is where App Store Connect keeps privacy URLs. The submit command routes it to the correct endpoint automatically, so no extra config is needed; just drop the file in the locale directory.
 
 ### File -> App Store Connect field mapping
 
@@ -81,6 +84,7 @@ metadata/
 | `release_notes.txt` | `whatsNew` (version localization) | 4000 | "What's New in This Version" release notes. Required for every version after 1.0. |
 | `support_url.txt` | `supportURL` (version localization) | - | Must start with `http://` or `https://`. |
 | `marketing_url.txt` | `marketingURL` (version localization) | - | Optional marketing site. |
+| `privacy_url.txt` | `privacyPolicyUrl` (app info localization) | - | Optional privacy policy URL. Patched on the App Info localization (app level), not the version localization. Must start with `http://` or `https://`. |
 
 Unknown filenames inside a locale directory are skipped with a warning. Dotfiles (`.DS_Store` etc.) are ignored.
 
@@ -169,7 +173,7 @@ No writes happen. Use this as your pre-flight before a live submit.
 - **`no ASC display type for WxH`** - a rendered PNG has dimensions that don't match any App Store Connect slot. Usually means you captured with a non-App-Store simulator (e.g. `iPhone 16 Plus`, which corresponds to the 6.7" slot that doesn't exist in ASC). Re-capture with a supported simulator per `references/config-reference.md`.
 - **`8MB limit exceeded`** - Apple caps individual screenshots at 8 MB. Reduce render complexity (smaller background image, lighter scrim) or lower PNG compression.
 - **`app_store_connect.submit.create_version is required`** - set `submit.create_version` in the YAML or pass `--version-override`.
-- **Locale not appearing in the upload summary** - every `metadata/<locale>/` file was empty or unknown. Only supported filenames (`name.txt`, `subtitle.txt`, `description.txt`, `keywords.txt`, `promotional_text.txt`, `release_notes.txt`, `support_url.txt`, `marketing_url.txt`) count; anything else is skipped with a warning.
+- **Locale not appearing in the upload summary** - every `metadata/<locale>/` file was empty or unknown. Only supported filenames (`name.txt`, `subtitle.txt`, `description.txt`, `keywords.txt`, `promotional_text.txt`, `release_notes.txt`, `support_url.txt`, `marketing_url.txt`, `privacy_url.txt`) count; anything else is skipped with a warning.
 
 ## Complete example
 
@@ -249,6 +253,7 @@ metadata/
     release_notes.txt         # what's new in 1.2.0
     support_url.txt           # https://example.com/support
     marketing_url.txt         # https://example.com
+    privacy_url.txt           # https://example.com/privacy
   es-ES/
     name.txt                  # "Recetas"
     subtitle.txt              # "Tu cocina, organizada"
@@ -278,4 +283,4 @@ storescreens submit --skip-metadata
 storescreens submit --skip-screenshots --version-override 1.2.1
 ```
 
-After `submit` reports success, open App Store Connect, inspect the 1.2.0 version, and click "Submit for Review" manually. v1 of `storescreens submit` deliberately stops short of that step.
+After `submit` reports success with `submit_for_review: false`, open App Store Connect, inspect the 1.2.0 version, and click "Submit for Review" manually. To skip that step and have `submit` post to `appStoreVersionSubmissions` automatically once uploads finish, flip `submit_for_review: true` in the YAML; the returned submission ID appears in the report.

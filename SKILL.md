@@ -593,7 +593,7 @@ Once the user is happy with the rendered output from Step 9, they can push every
 
 **When to offer this:** when the user is ready to ship a version and wants to avoid manually re-uploading screenshots and re-typing localized copy for each release. Opt-in; do not run without an explicit go-ahead.
 
-**Important caveat - manual review submission:** the current v1 of `storescreens submit` only uploads. It does NOT submit the version for App Review. After `submit` completes, the user must open App Store Connect in a browser and click "Submit for Review" themselves. `submit_for_review: true` is reserved for a future release. Flag this to the user clearly before running, so they don't assume the app went live.
+**Review submission:** by default `submit` uploads and stops, leaving you to click "Submit for Review" in App Store Connect yourself. Set `submit_for_review: true` in the `submit:` block to also post to Apple's `appStoreVersionSubmissions` endpoint automatically after uploads finish; the submission ID shows up in the report. The default stays `false` because review submission is irreversible without reviewer intervention, so confirm with the user before flipping it on.
 
 Full schema and every flag: `references/submit-reference.md`.
 
@@ -658,7 +658,7 @@ app_store_connect:
     create_version: "1.2.0"       # required; created in ASC if missing
     screenshots: true             # default: true
     metadata: true                # default: true
-    submit_for_review: false      # v1 always behaves as false, see warning
+    submit_for_review: false      # default: false. true auto-submits for App Review after uploads.
 ```
 
 Every field, defaults, and the full `submit:` shape are documented in `references/submit-reference.md`.
@@ -678,6 +678,7 @@ metadata/
     release_notes.txt        # "What's New in This Version" (max 4000 chars)
     support_url.txt          # must be https://
     marketing_url.txt        # optional marketing site
+    privacy_url.txt          # optional privacy policy URL (app-level field)
   es-ES/
     description.txt
     release_notes.txt
@@ -685,6 +686,8 @@ metadata/
 ```
 
 Trailing whitespace and newlines are trimmed from each file. Unknown filenames inside a locale directory are skipped with a warning. A locale directory with zero readable fields is silently dropped (not an error). Locale folder names must match the Xcode locale codes you already use elsewhere in `storescreens.yml` (`en-US`, `ja`, `de-DE`, etc.).
+
+`privacy_url.txt` is optional and patches the App Info localization (app level), not the version localization; `submit` routes it to the correct endpoint automatically, no extra config required.
 
 When helping the user create these files, offer to draft the initial copy based on what the app does - keep it generic if they haven't given you specifics. Never invent claims about the app.
 
@@ -715,7 +718,7 @@ Reports per-locale metadata updates, per-(locale, display type) screenshot uploa
 
 **Destructive behaviour for screenshots:** each App Store Connect screenshot set is wiped and re-populated from the rendered manifest so the local render is always the source of truth. The manifest's order becomes the App Store display order. Metadata uploads are non-destructive PATCHes: only fields with a file in `metadata/<locale>/` are sent.
 
-**Remind the user:** v1 stops at uploading. The App Review submit button is still manual - open App Store Connect, navigate to the uploaded version, and click "Submit for Review".
+**Remind the user:** with the default `submit_for_review: false`, `submit` stops after the uploads. Open App Store Connect, navigate to the version, and click "Submit for Review" manually. To skip that step, set `submit_for_review: true` and `submit` will post to `appStoreVersionSubmissions` once screenshots and metadata upload cleanly; the submission ID appears in the report output.
 
 ### 10h. Useful flags
 

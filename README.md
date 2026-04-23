@@ -66,7 +66,7 @@ For any assistant that supports skill files or custom instructions, point it at 
 9. Walks you through a `render:` block for App Store-ready framed/captioned screenshots: background (solid, gradient, or panoramic image sliced across all slides), optional scrim, logo, device chrome (none / stroke / bezel), and markdown captions with per-slide highlights
 10. Guides you through `storescreens bezels import` - mounting Apple Design Resource DMGs and installing bezel assets
 11. Iterates on caption/color/font changes via `storescreens render` without re-running a full capture
-12. Configures the App Store Connect API (`storescreens auth login`, `.p8` key, env vars) and uploads rendered screenshots + per-locale metadata (description, keywords, release notes, promotional text) to App Store Connect via `storescreens submit`
+12. Configures the App Store Connect API (`storescreens auth login`, `.p8` key, env vars) and uploads rendered screenshots + per-locale metadata (description, keywords, release notes, promotional text, privacy URL) to App Store Connect via `storescreens submit`, optionally auto-submitting the version for App Review
 13. Troubleshoots failures using build logs
 
 ## MCP Server
