@@ -1,13 +1,24 @@
 ---
 name: storescreens
-description: "Set up and run storescreens-cli to automate App Store screenshot capture for iOS apps. Also supports targeted screenshots for quick visual checks during development. Use this skill when the user wants to install storescreens-cli, configure screenshot automation for an Xcode project, add UI tests that capture screenshots, write or update ScreenshotTests.swift, run storescreens capture, take a quick screenshot of the simulator, or troubleshoot screenshot automation. Triggers for requests like 'set up App Store screenshots', 'automate screenshots with storescreens', 'add screenshot UI tests', 'capture screenshots for App Store Connect', 'configure storescreens', 'take a screenshot of the simulator', or 'show me what the app looks like'."
+description: "Set up and run storescreens-cli to automate App Store screenshot capture for iOS apps, including rendering captioned/framed App Store-ready screenshots with device bezels, markdown captions, and panoramic backgrounds, and uploading screenshots + per-locale metadata (name, subtitle, description, keywords, what's new, promotional text) directly to App Store Connect via the official API. Also supports targeted screenshots for quick visual checks during development. Use this skill when the user wants to install storescreens-cli, configure screenshot automation for an Xcode project, add UI tests that capture screenshots, write or update ScreenshotTests.swift, run storescreens capture, render framed/captioned App Store screenshots, install device bezels, iterate on caption text and styling, take a quick screenshot of the simulator, configure the App Store Connect API for uploads, upload screenshots to App Store Connect, submit metadata, push to App Store, update what's new / description / keywords for a release, or troubleshoot screenshot automation. Triggers for requests like 'set up App Store screenshots', 'automate screenshots with storescreens', 'add screenshot UI tests', 'capture screenshots for App Store Connect', 'configure storescreens', 'add captions to my App Store screenshots', 'frame my screenshots with device bezels', 'render App Store screenshots', 'take a screenshot of the simulator', 'show me what the app looks like', 'upload screenshots to App Store Connect', 'submit metadata', 'push to App Store', 'update the what's new', 'configure app store connect API', 'storescreens auth login', or 'set up the ASC API key'."
 ---
 
 # storescreens
 
-storescreens-cli runs XCUITest-based UI tests across simulators, extracts named `XCTAttachment` screenshots from the `.xcresult` bundle, and organizes them by device size.
+storescreens-cli runs XCUITest-based UI tests across simulators, extracts named `XCTAttachment` screenshots from the `.xcresult` bundle, and organizes them by device size. It also renders the raw captures into captioned, framed App Store Connect-ready screenshots (backgrounds, device bezels, markdown captions, per-slide highlights).
 
 Follow the steps below in order. Each step checks state before acting - skip steps that are already complete.
+
+The full workflow is:
+
+1. Install CLI + MCP server (Steps 1-1b)
+2. Detect project and generate `storescreens.yml` (Steps 2-3)
+3. Set up UI test target + `ScreenshotTests.swift` (Steps 4-6)
+4. Verify the build (Step 7)
+5. Capture raw screenshots (Step 8)
+6. **(optional) Render captioned, framed App Store-ready screenshots (Step 9)**
+7. **(optional) Upload screenshots + metadata to App Store Connect (Step 10)**
+8. **(optional) Upload to storescreens.app for visual editing (Step 11)**
 
 ---
 
@@ -377,7 +388,354 @@ storescreens-output/
 
 ---
 
-## Step 9: Upload to storescreens.app (optional, opt-in)
+## Step 9: Render captioned, framed screenshots (optional)
+
+Raw captures from Step 8 are functional but plain - just the app UI with no marketing chrome. The render pipeline turns them into framed, captioned images ready to upload to App Store Connect: background, device bezel, logo, marketing captions with markdown, per-slide highlights.
+
+**When to offer this:** any time the user wants App Store Connect-ready screenshots with captions or device frames. The render is opt-in (off by default) but most users want it before shipping.
+
+**Rendering runs automatically after `storescreens capture`** when `render.enabled: true` is in `storescreens.yml`. It can also be invoked standalone with `storescreens render`, which skips recapture and is the right loop for iterating on caption text, colors, fonts, etc. Pass `--no-render` to `storescreens capture` to skip rendering on one run.
+
+### 9a. Design the narrative first
+
+Before touching YAML, ask the user:
+
+1. **What's the hero story?** Typically the first 2-3 slides in App Store Connect do 90% of the conversion work. What's the single most important thing to communicate? Often this becomes slide 1's title.
+2. **What's the slide order?** Get a numbered list. This list goes verbatim into the top-level `screenshots:` key in `storescreens.yml` - the render pipeline walks it in this exact order (no alphabetical reordering anywhere).
+3. **Bezels or no bezels?** `chrome.style: bezel` is the polished App Store look but needs bezel DMGs from Apple Design Resources. `chrome.style: stroke` looks clean, has zero external assets, and is a fine default while iterating.
+4. **Light, dark, or both?** Most render fields (`background.image`, `background.color`, `logo.path`) accept `{ light:, dark: }` variants.
+5. **Any brand fonts?** Four tiers available: `system` (SF Pro), installed family name, local `.otf`/`.ttf` path, `{ google: "Inter" }` (auto-downloaded), or `{ regular:, bold:, italic:, bold_italic: }` bundle for correct markdown bold/italic.
+
+### 9b. Write the screenshots list
+
+Add the authoritative order at the top level of `storescreens.yml`:
+
+```yaml
+screenshots:
+  - 01_Home
+  - 02_Search
+  - 03_Detail
+  # ...
+```
+
+This list drives BOTH capture filtering AND render order. A panoramic background's left edge pins to the first entry here. `logo.placement: first_only` puts the logo on the first entry here.
+
+### 9c. Install bezels (only if using `chrome.style: bezel`)
+
+Apple licenses the bezel PSDs for use with their products. StoreScreens does not redistribute them - the user downloads once, then the importer extracts what it needs.
+
+1. Open <https://developer.apple.com/design/resources/> in a browser. Scroll to "Product Bezels". Download the DMG for each device family needed (iPhone, iPad, MacBook).
+2. Double-click each downloaded DMG to mount it. They appear under `/Volumes/`.
+3. Run:
+
+```bash
+storescreens bezels import
+```
+
+This auto-scans `/Volumes/` for Apple Design Resource DMGs, classifies PSDs by screen pixel dimensions, applies any `model_preference` / `colorway_preference` from `render.chrome`, and writes transparent-screen PNGs + JSON sidecars to `~/Library/Application Support/storescreens/bezels/` (user-global).
+
+Flags:
+
+- `--volume PATH` - use an explicit mount path instead of auto-scanning. Repeatable.
+- `--yes` - skip the "about to write N files, ok?" confirmation.
+- `--verbose` - log every PSD considered and why it won or lost.
+
+Inspect afterwards:
+
+```bash
+storescreens bezels check     # list installed bezels + canonical keys
+storescreens bezels path      # print the install directory
+```
+
+Per-project override: drop PNG + JSON sidecar files into `./bezels/` next to `storescreens.yml`. Project-local bezels take precedence over user-global ones.
+
+### 9d. Add a `render:` block - build it up incrementally
+
+Don't dump a huge render block on the user and hope it renders well. Add fields one at a time, run `storescreens render` after each, and open `preview.html` to inspect.
+
+Start with the minimum:
+
+```yaml
+render:
+  enabled: true
+  output_dir: ./storescreens-framed
+  chrome:
+    style: stroke         # quick-iterate; swap to bezel once bezels are imported
+```
+
+Add a background (solid color or image, with optional light/dark variants):
+
+```yaml
+  background:
+    color: "#1a1a2e"
+    # or a vertical gradient, top → bottom:
+    # color: ["#1a1a2e", "#4a1e5c"]
+    # or an image (single wide image = panoramic, sliced across all slides):
+    # image: ./marketing/panorama.jpg
+    # fit: cover            # cover | contain | tile
+    # align: center         # top | center | bottom
+    # with appearance variants:
+    # image:
+    #   light: ./bg-light.png
+    #   dark:  ./bg-dark.png
+```
+
+**Panoramic background**: if `background.image` is a single image wider than one slide, the renderer slices it across all slides in `screenshots:` order. Left edge of image pins to left edge of the first slide. Slides concatenate side-by-side in the App Store Connect gallery with a continuous image behind them.
+
+Add a scrim to tame a busy background image:
+
+```yaml
+  scrim:
+    color: "#000000"
+    opacity: 0.35
+    # or a vertical opacity gradient instead of flat opacity:
+    # gradient:
+    #   top_opacity: 0.0
+    #   bottom_opacity: 0.6
+```
+
+Add a logo (drawn above the screenshot):
+
+```yaml
+  logo:
+    path: ./marketing/logo-wordmark.svg
+    placement: first_only    # first_only | all | none
+    max_height_pct: 6
+    top_padding_pct: 3
+```
+
+Add captions. Each role (`title`, `subtitle`) is optional. `min_font_size_pct` lets the renderer auto-shrink a long title to fit before it wraps:
+
+```yaml
+  caption:
+    title:
+      font: system                  # or "Helvetica Neue" / path / bundle / google
+      weight: bold                  # thin|light|regular|medium|semibold|bold|heavy
+      italic: false
+      font_size_pct: 5.5
+      min_font_size_pct: 3.0
+      color: "#ffffff"
+      align: center                 # left | center | right
+    subtitle:
+      font: system
+      weight: regular
+      font_size_pct: 3.2
+      min_font_size_pct: 2.0
+      color: "#ffffff"
+      align: center
+    spacing_pct: 1.0
+    min_height_pct: 22              # reserved area at top of canvas for captions
+    padding_pct: 5
+```
+
+Then fill in per-slide caption text:
+
+```yaml
+  slides:
+    "01_Home":
+      caption: "Your recipes, organized."        # shorthand: title only
+    "02_Search":
+      caption:                                    # array: strict line breaks
+        - "Find anything"
+        - "in *seconds*."
+    "03_Detail":
+      caption:                                    # full object
+        title: "Every **detail**, at a glance."
+        subtitle: "Powered by AI"
+        highlights:
+          - { match: "detail", color: "#feb909", weight: heavy, italic: true }
+```
+
+**Caption shorthand:**
+
+| Form | Meaning |
+|------|---------|
+| `caption: "text"` | title only, auto-wraps at canvas width |
+| `caption: ["line 1", "line 2"]` | title with strict line breaks - items never wrap inside themselves |
+| `caption: { title:, subtitle:, highlights: }` | full object |
+
+**Markdown in captions:** `**bold**`, `*italic*`, `` `code` ``, `[text](url)` all work in title and subtitle strings. For correct bold/italic rendering, use a `bundle`-form font so the real bold and italic faces are used.
+
+**Highlights:** override color / weight / italic on literal substring matches. Case-sensitive. Applies to all occurrences in both title and subtitle. Each highlight sets any combination of `color`, `weight`, `italic`.
+
+**Chrome options:** `style: none | stroke | bezel`. `fit: width (default) | height | contain` controls how the device fills the canvas - `width` lets a tall device bleed past the bottom (classic App Store look). `corner_radius: auto` or a fixed px value. `model_preference` and `colorway_preference` influence which bezel gets picked at `bezels import` time.
+
+### 9e. Iterate
+
+```bash
+storescreens render          # re-renders from existing captures, no recapture
+open storescreens-framed/preview.html
+```
+
+Standalone render is sub-second per slide. Tweak captions, colors, fonts in `storescreens.yml`, re-run, reload the preview. No simulator reboot needed.
+
+To force a fresh capture + render from scratch:
+
+```bash
+storescreens capture         # captures, then renders (since render.enabled: true)
+```
+
+To capture without rendering (for diagnosing a capture issue):
+
+```bash
+storescreens capture --no-render
+```
+
+### 9f. Reference
+
+Full schema with every field, every enum value, and a complete real-world example: `references/render-reference.md`.
+
+---
+
+## Step 10: Upload to App Store Connect (optional)
+
+Once the user is happy with the rendered output from Step 9, they can push everything (screenshots + per-locale metadata like description, what's new, keywords, etc.) straight to App Store Connect via Apple's official API.
+
+**When to offer this:** when the user is ready to ship a version and wants to avoid manually re-uploading screenshots and re-typing localized copy for each release. Opt-in; do not run without an explicit go-ahead.
+
+**Important caveat - manual review submission:** the current v1 of `storescreens submit` only uploads. It does NOT submit the version for App Review. After `submit` completes, the user must open App Store Connect in a browser and click "Submit for Review" themselves. `submit_for_review: true` is reserved for a future release. Flag this to the user clearly before running, so they don't assume the app went live.
+
+Full schema and every flag: `references/submit-reference.md`.
+
+### 10a. Generate an App Store Connect API key
+
+Walk the user through this (they do it in a browser, once per team):
+
+1. Open <https://appstoreconnect.apple.com/access/api>.
+2. Click the "+" to generate a new key. Access level: "Admin" or "App Manager".
+3. Download the resulting `AuthKey_XXXXXX.p8` file. Apple only lets you download it once - store it somewhere safe, e.g. `~/.appstoreconnect/`.
+4. From the same page, record:
+   - **Key ID** - 10-character alphanumeric, shown in the row for the key.
+   - **Issuer ID** - a UUID displayed above the key list (team-wide, same for every key).
+
+### 10b. Configure credentials
+
+Two options. Pick one based on the user's situation.
+
+**Option A - environment variables** (best for CI, scripts, or anyone who already manages secrets in their shell):
+
+```bash
+export ASC_KEY_ID=ABCDE12345
+export ASC_ISSUER_ID=69a6de84-03c8-47e3-e053-5b8c7c11a4d1
+export ASC_KEY_PATH=~/.appstoreconnect/AuthKey_ABCDE12345.p8
+```
+
+**Option B - interactive login** (saves to a local file):
+
+```bash
+storescreens auth login
+```
+
+This prompts for the three values and writes `~/.storescreens/asc-credentials.yml` with permissions 0600. Tell the user: to clear credentials later, run `storescreens auth logout`.
+
+**Credential resolution order (narrow wins):** environment variables first. If all three are set, they are used; the file is ignored. Otherwise, `~/.storescreens/asc-credentials.yml` is read. If neither is present, any submit or auth-status command errors with `credentials not configured`.
+
+### 10c. Verify credentials work
+
+```bash
+storescreens auth status
+```
+
+This mints a JWT locally and calls `GET /v1/users` against the App Store Connect API. If the key works, it reports the active source (`environment` or `file`) and the authenticated team. If it fails, the output tells you whether the problem is the key ID, issuer ID, the .p8 contents, or an API-side rejection.
+
+Do not proceed to `submit` until `auth status` is green.
+
+### 10d. Add an `app_store_connect:` block to `storescreens.yml`
+
+Add at the top level of the YAML:
+
+```yaml
+app_store_connect:
+  # One of app_id or bundle_id is required. bundle_id is preferred - it's
+  # resolved via the API at submit time, so you don't need to hard-code
+  # the numeric ID.
+  bundle_id: com.example.recipes
+  # app_id: "1234567890"
+
+  metadata_dir: ./metadata        # default: ./metadata
+
+  submit:
+    create_version: "1.2.0"       # required; created in ASC if missing
+    screenshots: true             # default: true
+    metadata: true                # default: true
+    submit_for_review: false      # v1 always behaves as false, see warning
+```
+
+Every field, defaults, and the full `submit:` shape are documented in `references/submit-reference.md`.
+
+### 10e. Set up `metadata/<locale>/*.txt`
+
+StoreScreens uses fastlane's directory convention. One folder per locale, one file per App Store field. Any file left out means "don't touch that field in App Store Connect" - present files replace whatever is currently there.
+
+```
+metadata/
+  en-US/
+    name.txt                 # app name (max 30 chars)
+    subtitle.txt             # tagline (max 30 chars)
+    description.txt          # main description (max 4000 chars)
+    keywords.txt             # comma-separated (max 100 chars incl. commas)
+    promotional_text.txt     # above-the-fold marketing (max 170 chars)
+    release_notes.txt        # "What's New in This Version" (max 4000 chars)
+    support_url.txt          # must be https://
+    marketing_url.txt        # optional marketing site
+  es-ES/
+    description.txt
+    release_notes.txt
+    ...
+```
+
+Trailing whitespace and newlines are trimmed from each file. Unknown filenames inside a locale directory are skipped with a warning. A locale directory with zero readable fields is silently dropped (not an error). Locale folder names must match the Xcode locale codes you already use elsewhere in `storescreens.yml` (`en-US`, `ja`, `de-DE`, etc.).
+
+When helping the user create these files, offer to draft the initial copy based on what the app does - keep it generic if they haven't given you specifics. Never invent claims about the app.
+
+### 10f. Dry run to validate
+
+Always dry-run before the first real upload:
+
+```bash
+storescreens submit --dry-run
+```
+
+This validates:
+- credentials (mints a JWT, hits the API)
+- app lookup (by `app_id` or `bundle_id`)
+- version find-or-create (reports whether it will create or update)
+- `metadata/<locale>/` parse with warnings for unknown files
+- every rendered PNG: dimensions match an App Store display type, file under Apple's 8 MB per-screenshot cap
+
+No writes happen. Inspect the output with the user before going live.
+
+### 10g. Live upload
+
+```bash
+storescreens submit
+```
+
+Reports per-locale metadata updates, per-(locale, display type) screenshot uploads, and any errors.
+
+**Destructive behaviour for screenshots:** each App Store Connect screenshot set is wiped and re-populated from the rendered manifest so the local render is always the source of truth. The manifest's order becomes the App Store display order. Metadata uploads are non-destructive PATCHes: only fields with a file in `metadata/<locale>/` are sent.
+
+**Remind the user:** v1 stops at uploading. The App Review submit button is still manual - open App Store Connect, navigate to the uploaded version, and click "Submit for Review".
+
+### 10h. Useful flags
+
+| Flag | Description |
+|------|-------------|
+| `--dry-run` | Validate everything, write nothing. Always run first. |
+| `--skip-screenshots` | Upload metadata only. Good for release-notes-only fixes. |
+| `--skip-metadata` | Upload screenshots only. Good when iterating on visuals. |
+| `--version-override 1.2.1` | Override `submit.create_version` for this run (creates the version if needed). |
+| `--render-dir PATH` | Override `render.output_dir` as the screenshot source. |
+| `--metadata-dir PATH` | Override `app_store_connect.metadata_dir`. |
+| `--config PATH` / `-c PATH` | Path to `storescreens.yml` (default `./storescreens.yml`). |
+
+### 10i. Reference
+
+Full schema, character limits, credential resolution order, destructive semantics, troubleshooting, and a complete working example: `references/submit-reference.md`.
+
+---
+
+## Step 11: Upload to storescreens.app (optional, opt-in)
 
 The CLI can upload screenshots to [storescreens.app](https://storescreens.app) for visual editing (device frames, backgrounds, marketing text). This is **disabled by default**.
 
@@ -538,5 +896,7 @@ Most apps do **not** need this - leave it unset (default: off).
 
 ## References
 
-- Full config schema: `references/config-reference.md`
+- Full capture config schema: `references/config-reference.md`
+- Full render config schema (background, scrim, logo, caption, chrome, bezels, panoramic, markdown, highlights, fonts): `references/render-reference.md`
+- Full App Store Connect upload schema (`app_store_connect:` block, credentials, metadata files, `submit` flags, destructive semantics, troubleshooting): `references/submit-reference.md`
 - ScreenshotTests starter template: `../storescreens-cli/Sources/storescreens-cli/Resources/ScreenshotTests.swift.template`

@@ -55,6 +55,10 @@ test_target: MyAppUITests
 test_class: ScreenshotTests
 
 # Filter by screenshot name (optional - capture only these)
+# The order here is authoritative for BOTH capture and render. No
+# alphabetical reordering happens anywhere in the pipeline. A panoramic
+# render background's left edge pins to the first entry; logo placement
+# (first_only) uses the first entry here.
 # screenshots:
 #   - "01_Home"
 #   - "02_Detail"
@@ -64,6 +68,35 @@ test_class: ScreenshotTests
 
 # Upload to storescreens.app after capture (default: false)
 # upload: true
+
+# Render captioned, framed App Store-ready screenshots after capture.
+# Auto-runs after `storescreens capture` when render.enabled: true.
+# Also runnable standalone via `storescreens render` (no recapture).
+# Full schema: references/render-reference.md
+# render:
+#   enabled: true
+#   output_dir: ./storescreens-framed
+#   background: { color: "#1a1a2e" }
+#   chrome: { style: stroke }
+#   caption:
+#     title: { font: system, weight: bold, font_size_pct: 5.5, color: "#ffffff" }
+#     min_height_pct: 22
+#   slides:
+#     "01_Home": { caption: "Your recipes, organized." }
+
+# Upload rendered screenshots + per-locale metadata to App Store Connect
+# via `storescreens submit`. Credentials come from env vars (ASC_KEY_ID,
+# ASC_ISSUER_ID, ASC_KEY_PATH) or ~/.storescreens/asc-credentials.yml
+# (written by `storescreens auth login`). Full schema:
+# references/submit-reference.md
+# app_store_connect:
+#   bundle_id: com.example.app    # or app_id: "1234567890"
+#   metadata_dir: ./metadata
+#   submit:
+#     create_version: "1.2.0"
+#     screenshots: true
+#     metadata: true
+#     submit_for_review: false    # v1 always behaves as false; manual review submit
 ```
 
 ## Device Names & App Store Connect Size Mapping
@@ -132,3 +165,34 @@ Common iPad simulators:
 | `--keep-alive` | Keep simulators running after capture |
 | `--skip-check` | Skip preflight source code check |
 | `--verbose` | Show full xcodebuild output |
+| `--no-render` | Skip the render pass even when `render.enabled: true` |
+
+## Render + Bezel Commands
+
+| Command | Description |
+|---------|-------------|
+| `storescreens render` | Re-render captioned/framed output from existing captures. No simulator, no xcodebuild. |
+| `storescreens bezels import` | Auto-scan mounted Apple Design Resource DMGs; install bezel PNGs + sidecars |
+| `storescreens bezels import --volume PATH` | Import from a specific mount path (repeatable) |
+| `storescreens bezels import --yes` | Skip confirmation prompt |
+| `storescreens bezels check` | List installed bezels |
+| `storescreens bezels path` | Print the bezel install directory (`~/Library/Application Support/storescreens/bezels/`) |
+
+See `references/render-reference.md` for the full `render:` schema.
+
+## App Store Connect Upload
+
+The top-level `app_store_connect:` block configures `storescreens submit`, which uploads rendered screenshots and per-locale metadata (description, keywords, what's new, etc.) to App Store Connect via Apple's official API. See `references/submit-reference.md` for the full schema, credential resolution order, metadata file layout, destructive upload semantics, troubleshooting, and a complete example.
+
+```yaml
+app_store_connect:
+  bundle_id: com.example.app      # or app_id: "1234567890"
+  metadata_dir: ./metadata        # default: ./metadata
+  submit:
+    create_version: "1.2.0"       # required
+    screenshots: true
+    metadata: true
+    submit_for_review: false      # v1 always behaves as false
+```
+
+Related commands: `storescreens auth login`, `storescreens auth status`, `storescreens auth logout`, `storescreens submit [--dry-run] [--skip-screenshots] [--skip-metadata] [--version-override X.Y.Z]`.

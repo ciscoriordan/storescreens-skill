@@ -1,8 +1,8 @@
 # storescreens-skill
 
-Agent skill for [storescreens-cli](https://github.com/ciscoriordan/storescreens-cli), the CLI that captures App Store screenshots across every required device size in one command.
+Agent skill for [storescreens-cli](https://github.com/ciscoriordan/storescreens-cli), the CLI that captures App Store screenshots across every required device size, renders them into captioned, framed App Store-ready images, and uploads them (with per-locale metadata) straight to App Store Connect, in one command.
 
-This skill lets an AI coding assistant handle the entire setup: installing the CLI, detecting your Xcode project, configuring devices, generating UI tests, and running captures. It also supports **targeted screenshots** for quick visual checks during development, capturing the current simulator screen in under a second without building or running tests.
+This skill lets an AI coding assistant handle the entire pipeline: installing the CLI, detecting your Xcode project, configuring devices, generating UI tests, running captures, installing device bezels, writing a `render:` config that produces captioned/framed App Store Connect-ready screenshots, configuring the App Store Connect API, and pushing screenshots + per-locale metadata (name, subtitle, description, keywords, what's new, promotional text) to App Store Connect for the next release. It also supports **targeted screenshots** for quick visual checks during development, capturing the current simulator screen in under a second without building or running tests.
 
 ## Prerequisites
 
@@ -63,7 +63,11 @@ For any assistant that supports skill files or custom instructions, point it at 
 6. Adds accessibility identifiers for reliable element targeting
 7. Runs preflight checks - errors and warnings are surfaced before capture, with a prompt to fix or continue
 8. Runs capture (via MCP tools when available, CLI otherwise)
-9. Troubleshoots failures using build logs
+9. Walks you through a `render:` block for App Store-ready framed/captioned screenshots: background (solid, gradient, or panoramic image sliced across all slides), optional scrim, logo, device chrome (none / stroke / bezel), and markdown captions with per-slide highlights
+10. Guides you through `storescreens bezels import` - mounting Apple Design Resource DMGs and installing bezel assets
+11. Iterates on caption/color/font changes via `storescreens render` without re-running a full capture
+12. Configures the App Store Connect API (`storescreens auth login`, `.p8` key, env vars) and uploads rendered screenshots + per-locale metadata (description, keywords, release notes, promotional text) to App Store Connect via `storescreens submit`
+13. Troubleshoots failures using build logs
 
 ## MCP Server
 
@@ -99,7 +103,9 @@ StoreScreens complements [Xcode's built-in MCP server](https://developer.apple.c
 
 - **`SKILL.md`** - Step-by-step instructions for the agent
 - **`storescreens.skill`** - Packaged skill archive (SKILL.md + references + assets)
-- **`references/config-reference.md`** - Full `storescreens.yml` config schema
+- **`references/config-reference.md`** - Top-level `storescreens.yml` config schema (devices, locales, test target, etc.)
+- **`references/render-reference.md`** - Full `render:` schema: background (including panoramic slicing), scrim, logo, caption (fonts, markdown, highlights), chrome (stroke / bezel), bezel install flow, caption shorthands, and a complete example
+- **`references/submit-reference.md`** - Full App Store Connect upload schema: `app_store_connect:` block, `submit:` sub-block, credential resolution (env + `~/.storescreens/asc-credentials.yml`), `metadata/<locale>/*.txt` file layout and ASC field mapping, destructive upload semantics, troubleshooting, and a complete example
 - **`assets/ScreenshotTests.swift.template`** - Starter UI test template
 
 ## Related
