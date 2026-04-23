@@ -1,6 +1,6 @@
 ---
 name: storescreens
-description: "Set up and run storescreens-cli to automate App Store screenshot capture for iOS apps, including rendering captioned/framed App Store-ready screenshots with device bezels, markdown captions, and panoramic backgrounds, and uploading screenshots + per-locale metadata (name, subtitle, description, keywords, what's new, promotional text) directly to App Store Connect via the official API. Also supports targeted screenshots for quick visual checks during development. Use this skill when the user wants to install storescreens-cli, configure screenshot automation for an Xcode project, add UI tests that capture screenshots, write or update ScreenshotTests.swift, run storescreens capture, render framed/captioned App Store screenshots, install device bezels, iterate on caption text and styling, take a quick screenshot of the simulator, configure the App Store Connect API for uploads, upload screenshots to App Store Connect, submit metadata, push to App Store, update what's new / description / keywords for a release, or troubleshoot screenshot automation. Triggers for requests like 'set up App Store screenshots', 'automate screenshots with storescreens', 'add screenshot UI tests', 'capture screenshots for App Store Connect', 'configure storescreens', 'add captions to my App Store screenshots', 'frame my screenshots with device bezels', 'render App Store screenshots', 'take a screenshot of the simulator', 'show me what the app looks like', 'upload screenshots to App Store Connect', 'submit metadata', 'push to App Store', 'update the what's new', 'configure app store connect API', 'storescreens auth login', or 'set up the ASC API key'."
+description: "Set up and run storescreens-cli to automate App Store screenshot capture for iOS apps, including rendering captioned/framed App Store-ready screenshots with device bezels, markdown captions, and panoramic backgrounds, and uploading screenshots + per-locale metadata (name, subtitle, description, keywords, what's new, promotional text) directly to App Store Connect via the official API. Also supports targeted screenshots for quick visual checks during development. Use this skill when the user wants to install storescreens-cli, configure screenshot automation for an Xcode project, add UI tests that capture screenshots, write or update ScreenshotTests.swift, run storescreens capture, render framed/captioned App Store screenshots, install device bezels, iterate on caption text and styling, take a quick screenshot of the simulator, configure the App Store Connect API for uploads, upload screenshots to App Store Connect, submit metadata, push to App Store, update what's new / description / keywords for a release, or troubleshoot screenshot automation. Triggers for requests like 'set up App Store screenshots', 'automate screenshots with storescreens', 'add screenshot UI tests', 'capture screenshots for App Store Connect', 'configure storescreens', 'add captions to my App Store screenshots', 'frame my screenshots with device bezels', 'render App Store screenshots', 'take a screenshot of the simulator', 'show me what the app looks like', 'upload screenshots to App Store Connect', 'submit metadata', 'push to App Store', 'update the what's new', 'configure app store connect API', 'set up app store connect credentials', 'scaffold metadata directory', 'storescreens auth init', 'storescreens auth login', 'storescreens metadata init', or 'set up the ASC API key'."
 ---
 
 # storescreens
@@ -593,7 +593,7 @@ Once the user is happy with the rendered output from Step 9, they can push every
 
 **When to offer this:** when the user is ready to ship a version and wants to avoid manually re-uploading screenshots and re-typing localized copy for each release. Opt-in; do not run without an explicit go-ahead.
 
-**Review submission:** by default `submit` uploads and stops, leaving you to click "Submit for Review" in App Store Connect yourself. Set `submit_for_review: true` in the `submit:` block to also post to Apple's `appStoreVersionSubmissions` endpoint automatically after uploads finish; the submission ID shows up in the report. The default stays `false` because review submission is irreversible without reviewer intervention, so confirm with the user before flipping it on.
+**Review submission:** by default `submit` uploads and stops, leaving you to click "Submit for Review" in App Store Connect yourself. Set `submit_for_review: true` in the `submit:` block to also submit the version for App Review automatically after uploads finish (internally uses Apple's newer `reviewSubmissions` 3-step flow - transparent to the user); the submission ID shows up in the report. The default stays `false` because review submission is irreversible without reviewer intervention, so confirm with the user before flipping it on.
 
 Full schema and every flag: `references/submit-reference.md`.
 
@@ -610,9 +610,29 @@ Walk the user through this (they do it in a browser, once per team):
 
 ### 10b. Configure credentials
 
-Two options. Pick one based on the user's situation.
+Three options. Pick one based on the user's situation.
 
-**Option A - environment variables** (best for CI, scripts, or anyone who already manages secrets in their shell):
+**Option A - `auth init` (recommended for most users):**
+
+```bash
+storescreens auth init
+```
+
+This writes `~/.storescreens/asc-credentials.yml` (perms 0600) with commented placeholders for `key_id`, `issuer_id`, and `key_path`, then opens it in `$EDITOR` (or the default macOS text editor if `$EDITOR` is unset). Replace the three `REPLACE_ME` values with the credentials from Step 10a and save.
+
+Flags:
+- `--force` - overwrite an existing credentials file
+- `--no-open` - write the file but don't launch an editor
+
+**Option B - interactive `auth login`** (prompt-driven alternative):
+
+```bash
+storescreens auth login
+```
+
+Prompts for the three values and writes the same file. Use this if the user prefers a Q&A flow over editing a pre-filled file.
+
+**Option C - environment variables** (best for CI, scripts, or anyone who already manages secrets in their shell):
 
 ```bash
 export ASC_KEY_ID=ABCDE12345
@@ -620,13 +640,7 @@ export ASC_ISSUER_ID=69a6de84-03c8-47e3-e053-5b8c7c11a4d1
 export ASC_KEY_PATH=~/.appstoreconnect/AuthKey_ABCDE12345.p8
 ```
 
-**Option B - interactive login** (saves to a local file):
-
-```bash
-storescreens auth login
-```
-
-This prompts for the three values and writes `~/.storescreens/asc-credentials.yml` with permissions 0600. Tell the user: to clear credentials later, run `storescreens auth logout`.
+Tell the user: to clear credentials later, run `storescreens auth logout`.
 
 **Credential resolution order (narrow wins):** environment variables first. If all three are set, they are used; the file is ignored. Otherwise, `~/.storescreens/asc-credentials.yml` is read. If neither is present, any submit or auth-status command errors with `credentials not configured`.
 
@@ -667,8 +681,24 @@ Every field, defaults, and the full `submit:` shape are documented in `reference
 
 StoreScreens uses fastlane's directory convention. One folder per locale, one file per App Store field. Any file left out means "don't touch that field in App Store Connect" - present files replace whatever is currently there.
 
+**Scaffold the directory with `metadata init`:**
+
+```bash
+storescreens metadata init --locales en-US ja
+```
+
+This creates `metadata/<locale>/` subdirectories (one per locale you pass) and writes `metadata/README.md` with the full field reference table (name, subtitle, description, keywords, promotional_text, release_notes, support_url, marketing_url, privacy_url) including character limits and notes. The user then fills in only the `.txt` files they actually want uploaded.
+
+Flags:
+- `--locales en-US es-ES ja` - one or more locales (default: `en-US`). Accepts multiple values.
+- `--dir ./metadata` - override the target directory
+- `--force` - overwrite an existing `README.md`
+
+Resulting layout:
+
 ```
 metadata/
+  README.md                  # field reference table (written by `metadata init`)
   en-US/
     name.txt                 # app name (max 30 chars)
     subtitle.txt             # tagline (max 30 chars)
@@ -718,7 +748,7 @@ Reports per-locale metadata updates, per-(locale, display type) screenshot uploa
 
 **Destructive behaviour for screenshots:** each App Store Connect screenshot set is wiped and re-populated from the rendered manifest so the local render is always the source of truth. The manifest's order becomes the App Store display order. Metadata uploads are non-destructive PATCHes: only fields with a file in `metadata/<locale>/` are sent.
 
-**Remind the user:** with the default `submit_for_review: false`, `submit` stops after the uploads. Open App Store Connect, navigate to the version, and click "Submit for Review" manually. To skip that step, set `submit_for_review: true` and `submit` will post to `appStoreVersionSubmissions` once screenshots and metadata upload cleanly; the submission ID appears in the report output.
+**Remind the user:** with the default `submit_for_review: false`, `submit` stops after the uploads. Open App Store Connect, navigate to the version, and click "Submit for Review" manually. To skip that step, set `submit_for_review: true` and `submit` will drive Apple's newer `reviewSubmissions` 3-step flow (create submission, add the version as an item, submit) once screenshots and metadata upload cleanly; the submission ID appears in the report output. The 3-step flow is transparent to the user.
 
 ### 10h. Useful flags
 

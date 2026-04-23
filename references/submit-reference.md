@@ -2,7 +2,7 @@
 
 `storescreens submit` uploads rendered screenshots and per-locale metadata (name, subtitle, description, keywords, what's new, etc.) to App Store Connect via Apple's official API. It is a wholly separate step from `capture` and `render`: you must have already captured, rendered, and be happy with the output before running `submit`.
 
-By default `submit` stops after the uploads and leaves review submission to you. Set `submit_for_review: true` in the `submit:` block to also post the version to Apple's `appStoreVersionSubmissions` endpoint once screenshots and metadata are done. See `submit_for_review` below.
+By default `submit` stops after the uploads and leaves review submission to you. Set `submit_for_review: true` in the `submit:` block to also submit the version for App Review once screenshots and metadata are done. Internally this uses Apple's newer `reviewSubmissions` 3-step flow (create submission, add the version as an item, submit), transparent to the user; the submission ID is surfaced in the report. See `submit_for_review` below.
 
 ## Top-level shape
 
@@ -40,15 +40,18 @@ app_store_connect:
 | `create_version` | string | - | **Required.** Target App Store version string (e.g. `1.2.0`). If the version doesn't exist in App Store Connect yet, it is created. Can be overridden on the CLI with `--version-override`. |
 | `screenshots` | bool | `true` | Upload rendered screenshots. Set to `false` for a metadata-only submit. Also controllable via `--skip-screenshots`. |
 | `metadata` | bool | `true` | Upload per-locale metadata. Set to `false` for a screenshots-only submit. Also controllable via `--skip-metadata`. |
-| `submit_for_review` | bool | `false` | When `true`, `submit` posts to `appStoreVersionSubmissions` after screenshots and metadata have been uploaded successfully. The submission ID is included in the report output. Submission runs only after the uploads succeed, so the version is complete when Apple picks it up. Default is `false` because review submission is irreversible without reviewer intervention, so opt in explicitly when you are ready to ship. |
+| `submit_for_review` | bool | `false` | When `true`, `submit` drives Apple's `reviewSubmissions` 3-step flow (create submission, attach the version as an item, submit) after screenshots and metadata have been uploaded successfully. The submission ID is included in the report output. Submission runs only after the uploads succeed, so the version is complete when Apple picks it up. Default is `false` because review submission is irreversible without reviewer intervention, so opt in explicitly when you are ready to ship. (Internal note: storescreens-cli previously used the older `appStoreVersionSubmissions` endpoint; the migration to `reviewSubmissions` is transparent to users - same YAML flag, same external behavior.) |
 | `platform` | string | `IOS` | ASC platform enum: `IOS`, `MAC_OS`, `TV_OS`, `VISION_OS`. Rarely needs override; derive from your app's actual platform. |
 
 ## Metadata directory layout
 
 Fastlane convention. One folder per locale, one file per field. Any file you leave out means "don't touch that field in App Store Connect". Present files replace whatever is currently there. Trailing whitespace and newlines are trimmed.
 
+Scaffold the directory with `storescreens metadata init` (see the Commands section below). This creates per-locale subdirectories and writes a `metadata/README.md` with the full field reference table inline, so the user has the reference right next to the files they are editing.
+
 ```
 metadata/
+  README.md                  # field reference table, written by `metadata init`
   en-US/
     name.txt
     subtitle.txt
@@ -98,7 +101,7 @@ Locale directories must match the Xcode locale codes used in your storescreens c
    - `ASC_KEY_ID` - 10-character alphanumeric key ID
    - `ASC_ISSUER_ID` - UUID from the App Store Connect API keys page
    - `ASC_KEY_PATH` - path to the `AuthKey_XXXXXX.p8` file (tilde is expanded)
-2. **File** at `~/.storescreens/asc-credentials.yml` (perms 0600), written by `storescreens auth login`. The YAML shape is:
+2. **File** at `~/.storescreens/asc-credentials.yml` (perms 0600), written by `storescreens auth init` (recommended) or `storescreens auth login`. The YAML shape is:
 
    ```yaml
    key_id: ABCDE12345
@@ -112,11 +115,18 @@ If none of the above is present, commands that need credentials throw `App Store
 
 | Command | Purpose |
 |---------|---------|
-| `storescreens auth login` | Prompt for key ID / issuer ID / .p8 path and write `~/.storescreens/asc-credentials.yml` (0600). |
+| `storescreens auth init` | Write `~/.storescreens/asc-credentials.yml` (0600) with commented `REPLACE_ME` placeholders for `key_id`, `issuer_id`, `key_path`, then open it in `$EDITOR` (or `open -t` if unset). Recommended onboarding path for most users. |
+| `storescreens auth login` | Prompt for key ID / issuer ID / .p8 path and write `~/.storescreens/asc-credentials.yml` (0600). Alternative to `auth init` for users who prefer a Q&A flow. |
 | `storescreens auth logout` | Delete the stored credentials file. Env vars are untouched. |
 | `storescreens auth status` | Report active credential source and mint a JWT + hit `/v1/users` to verify the key works. |
+| `storescreens metadata init` | Scaffold `metadata/<locale>/` directories and write `metadata/README.md` containing the full field reference table. |
 | `storescreens submit --dry-run` | Validate credentials, app lookup, metadata directory, screenshot dimensions and 8MB size cap. No writes. |
 | `storescreens submit` | Live upload. Destructive for screenshot sets (see below). |
+
+### `auth init` flags
+
+- `--force` / `-f` - overwrite an existing credentials file. Without this, `auth init` warns and opens the existing file instead of clobbering it.
+- `--no-open` - write the file but don't launch an editor. Useful in scripted setups.
 
 ### `auth login` flags
 
@@ -125,6 +135,14 @@ Any flag left off is prompted interactively:
 - `--key-id ABCDE12345`
 - `--issuer-id 69a6de84-03c8-47e3-e053-5b8c7c11a4d1`
 - `--key-path ~/.appstoreconnect/AuthKey_ABCDE12345.p8`
+
+### `metadata init` flags
+
+- `--locales en-US es-ES ja` / `-l ...` - one or more locale codes. Multiple values accepted in a single flag. Default: `en-US`.
+- `--dir PATH` / `-d PATH` - target directory. Default: `./metadata`.
+- `--force` / `-f` - overwrite an existing `README.md` inside the target directory.
+
+The command is non-destructive by default: it creates missing locale subdirectories and writes `README.md` only if absent. Existing locale folders and `.txt` files are left alone. The `README.md` inside the metadata directory is the authoritative field reference for the user - it lists every supported filename, the corresponding App Store Connect field, character limits, and an empty-file caveat (an empty file DOES overwrite the ASC field with an empty string; delete the file instead).
 
 ### `submit` flags
 
@@ -168,7 +186,7 @@ No writes happen. Use this as your pre-flight before a live submit.
 
 ## Troubleshooting
 
-- **`credentials not configured`** - run `storescreens auth login` or export `ASC_KEY_ID`, `ASC_ISSUER_ID`, `ASC_KEY_PATH`. `auth status` will tell you which source it found.
+- **`credentials not configured`** - run `storescreens auth init` (recommended) or `storescreens auth login`, or export `ASC_KEY_ID`, `ASC_ISSUER_ID`, `ASC_KEY_PATH`. `auth status` will tell you which source it found.
 - **`no App Store Connect app matched: <bundle>`** - the `bundle_id` in config doesn't match any app in your ASC team. Confirm the bundle ID is an exact match, or switch to `app_id`.
 - **`no ASC display type for WxH`** - a rendered PNG has dimensions that don't match any App Store Connect slot. Usually means you captured with a non-App-Store simulator (e.g. `iPhone 16 Plus`, which corresponds to the 6.7" slot that doesn't exist in ASC). Re-capture with a supported simulator per `references/config-reference.md`.
 - **`8MB limit exceeded`** - Apple caps individual screenshots at 8 MB. Reduce render complexity (smaller background image, lighter scrim) or lower PNG compression.
@@ -267,8 +285,9 @@ Workflow:
 
 ```bash
 # One-time setup
-storescreens auth login
+storescreens auth init         # or `storescreens auth login` for a prompt flow
 storescreens auth status
+storescreens metadata init --locales en-US es-ES
 
 # Validate without uploading
 storescreens submit --dry-run
@@ -283,4 +302,4 @@ storescreens submit --skip-metadata
 storescreens submit --skip-screenshots --version-override 1.2.1
 ```
 
-After `submit` reports success with `submit_for_review: false`, open App Store Connect, inspect the 1.2.0 version, and click "Submit for Review" manually. To skip that step and have `submit` post to `appStoreVersionSubmissions` automatically once uploads finish, flip `submit_for_review: true` in the YAML; the returned submission ID appears in the report.
+After `submit` reports success with `submit_for_review: false`, open App Store Connect, inspect the 1.2.0 version, and click "Submit for Review" manually. To skip that step and have `submit` drive Apple's `reviewSubmissions` 3-step flow automatically once uploads finish, flip `submit_for_review: true` in the YAML; the returned submission ID appears in the report.
