@@ -1,6 +1,6 @@
 ---
 name: storescreens
-description: "Set up and run storescreens-cli to automate App Store screenshot capture for iOS apps, including rendering captioned/framed App Store-ready screenshots with device bezels, markdown captions, and panoramic backgrounds, and uploading screenshots + per-locale metadata (name, subtitle, description, keywords, what's new, promotional text) directly to App Store Connect via the official API. Also supports targeted screenshots for quick visual checks during development. Use this skill when the user wants to install storescreens-cli, configure screenshot automation for an Xcode project, add UI tests that capture screenshots, write or update ScreenshotTests.swift, run storescreens capture, render framed/captioned App Store screenshots, install device bezels, iterate on caption text and styling, take a quick screenshot of the simulator, configure the App Store Connect API for uploads, upload screenshots to App Store Connect, submit metadata, push to App Store, update what's new / description / keywords for a release, or troubleshoot screenshot automation. Triggers for requests like 'set up App Store screenshots', 'automate screenshots with storescreens', 'add screenshot UI tests', 'capture screenshots for App Store Connect', 'configure storescreens', 'add captions to my App Store screenshots', 'frame my screenshots with device bezels', 'render App Store screenshots', 'take a screenshot of the simulator', 'show me what the app looks like', 'upload screenshots to App Store Connect', 'submit metadata', 'push to App Store', 'update the what's new', 'configure app store connect API', 'set up app store connect credentials', 'scaffold metadata directory', 'storescreens auth init', 'storescreens auth login', 'storescreens metadata init', or 'set up the ASC API key'."
+description: "Set up and run storescreens-cli to automate App Store screenshot capture for iOS apps, including rendering captioned/framed App Store-ready screenshots with device bezels, markdown captions, and panoramic backgrounds, uploading screenshots + per-locale metadata (name, subtitle, description, keywords, what's new, promotional text) directly to App Store Connect via the official API, and archiving + uploading the app binary (.ipa) to App Store Connect / TestFlight via xcodebuild + altool with a pinned non-beta Xcode. Also supports targeted screenshots for quick visual checks during development. Use this skill when the user wants to install storescreens-cli, configure screenshot automation for an Xcode project, add UI tests that capture screenshots, write or update ScreenshotTests.swift, run storescreens capture, render framed/captioned App Store screenshots, install device bezels, iterate on caption text and styling, take a quick screenshot of the simulator, configure the App Store Connect API for uploads, upload screenshots to App Store Connect, submit metadata, push to App Store, update what's new / description / keywords for a release, archive the app and upload to TestFlight / App Store Connect, build an .ipa, scaffold upload-build config, or troubleshoot screenshot automation or build upload. Triggers for requests like 'set up App Store screenshots', 'automate screenshots with storescreens', 'add screenshot UI tests', 'capture screenshots for App Store Connect', 'configure storescreens', 'add captions to my App Store screenshots', 'frame my screenshots with device bezels', 'render App Store screenshots', 'take a screenshot of the simulator', 'show me what the app looks like', 'upload screenshots to App Store Connect', 'submit metadata', 'push to App Store', 'update the what's new', 'configure app store connect API', 'set up app store connect credentials', 'scaffold metadata directory', 'storescreens auth init', 'storescreens auth login', 'storescreens metadata init', 'set up the ASC API key', 'archive and upload my app', 'upload a build to TestFlight', 'build and upload the ipa', 'storescreens upload-build', 'upload-build init', 'archive with storescreens', 'submit a binary to App Store Connect', or 'ship a new release build'."
 ---
 
 # storescreens
@@ -18,7 +18,8 @@ The full workflow is:
 5. Capture raw screenshots (Step 8)
 6. **(optional) Render captioned, framed App Store-ready screenshots (Step 9)**
 7. **(optional) Upload screenshots + metadata to App Store Connect (Step 10)**
-8. **(optional) Upload to storescreens.app for visual editing (Step 11)**
+8. **(optional) Archive + upload the app binary to App Store Connect / TestFlight (Step 10b)**
+9. **(optional) Upload to storescreens.app for visual editing (Step 11)**
 
 ---
 
@@ -768,6 +769,128 @@ Full schema, character limits, credential resolution order, destructive semantic
 
 ---
 
+## Step 10b: Archive + upload the app binary (optional)
+
+`storescreens submit` uploads screenshots and metadata only; it does **not** build or upload the `.ipa`. For that, `storescreens upload-build` wraps `xcodebuild archive` -> `xcodebuild -exportArchive` -> `xcrun altool --upload-app` into one command, reusing the same ASC API key credentials.
+
+Key behaviour:
+
+- **Non-beta Xcode auto-selection.** Scans `/Applications` for `Xcode*.app`, excludes anything with "beta" in the path or icon, and pins `DEVELOPER_DIR` to the highest-version production Xcode. A beta `xcode-select -p` won't taint the archive. Override with `xcode_path:` in config or `--xcode-path`.
+- **Shared credentials.** Uses `~/.storescreens/asc-credentials.yml` (or `ASC_KEY_ID` / `ASC_ISSUER_ID` / `ASC_KEY_PATH` env vars) from Step 10a. The .p8 is written to a tmpdir as `AuthKey_<KEY_ID>.p8`, `API_PRIVATE_KEYS_DIR` is pointed at it, and the tmpdir is wiped after altool exits.
+- **Generated ExportOptions.plist by default.** Writes a minimal plist with `method: app-store`, `uploadSymbols: true`, `stripSwiftSymbols: true`. Users with a hand-crafted plist pass `export_options_plist:` to override.
+
+**When to offer this:** any time the user asks about building, archiving, uploading to TestFlight, or shipping a binary. Opt-in; do not run without an explicit go-ahead.
+
+Full schema and every flag: `references/upload-build-reference.md`.
+
+### 10b.a. Scaffold config with `upload-build init`
+
+```bash
+storescreens upload-build init
+```
+
+Appends an `upload_build:` block inside the existing `app_store_connect:` block in `storescreens.yml`, with commented placeholders for every supported field, and opens the file in `$EDITOR`. The block is inserted as a sibling of `submit:`.
+
+Flags:
+
+- `--force` / `-f` - replace an existing `upload_build:` block.
+- `--no-open` - write without launching an editor.
+- `--config PATH` / `-c PATH` - target a specific yml.
+
+If `storescreens.yml` has no `app_store_connect:` block yet, `init` appends a fresh one with a `bundle_id: REPLACE_ME_…` placeholder plus the upload-build block; the user fills in the bundle ID.
+
+### 10b.b. Minimum viable config
+
+Most users only need this (inside `app_store_connect:`):
+
+```yaml
+app_store_connect:
+  bundle_id: com.example.app
+  upload_build: {}
+```
+
+Defaults kick in: scheme from top-level `scheme:`, `configuration: Release`, `export_method: app-store`, auto-detected non-beta Xcode, automatic signing with `-allowProvisioningUpdates`, output at `./build/`. Hand-edit the scaffolded block to turn any of these off.
+
+### 10b.c. Verify credentials + Xcode
+
+Same credential check as submit:
+
+```bash
+storescreens auth status
+```
+
+Dry-run plans the build without touching xcodebuild or altool:
+
+```bash
+storescreens upload-build --dry-run
+```
+
+The dry-run output shows the resolved scheme, configuration, destination, export method, which Xcode was picked (version + path + BETA flag if forced to a beta), and where the archive and ipa will land. Inspect this before a live run.
+
+### 10b.d. Live upload
+
+```bash
+storescreens upload-build
+```
+
+Runs archive, export, then altool upload. Streams xcodebuild output via `--verbose`. To keep a local `.ipa` without pushing to ASC (e.g. for manual distribution or inspection):
+
+```bash
+storescreens upload-build --skip-upload
+```
+
+Also usable as a YAML field: `upload_build: { skip_upload: true }`.
+
+### 10b.e. Common flags
+
+| Flag | Description |
+|------|-------------|
+| `--dry-run` | Plan without running xcodebuild or altool. Always run before the first live upload. |
+| `--scheme NAME` | Override the scheme. Wins over both top-level `scheme:` and `upload_build.scheme:`. |
+| `--configuration NAME` | Override build configuration (e.g. `Debug`). |
+| `--xcode-path PATH` | Use a specific Xcode. Accepts the `.app` bundle or `Contents/Developer` dir. |
+| `--output-dir PATH` | Override where the `.xcarchive` and exported `.ipa` land. |
+| `--skip-upload` | Archive + export + stop. Leaves the `.ipa` in `output_dir`. |
+| `--verbose` | Stream full xcodebuild output to stdout instead of filtered lines. |
+| `--config PATH` / `-c PATH` | Path to `storescreens.yml`. |
+
+### 10b.f. Signing notes
+
+Defaults assume **automatic signing** with `-allowProvisioningUpdates` enabled at both archive and export time, so Xcode can fetch or create missing provisioning profiles on the fly. This matches the happy path for most App Store-enrolled developer accounts.
+
+For **manual signing**, set `signing_style: manual` and fill in `provisioning_profiles:` (bundle id -> profile name). The generated `ExportOptions.plist` uses these instead of asking Xcode to figure things out.
+
+If signing misbehaves, inspect the archive:
+
+```bash
+open /path/to/output_dir/<scheme>.xcarchive
+```
+
+Or hand-craft an `ExportOptions.plist` and point `export_options_plist:` at it; storescreens skips generation and uses yours verbatim.
+
+### 10b.g. Typical release workflow
+
+```bash
+# One-time setup (if you haven't already)
+storescreens auth init
+storescreens upload-build init
+
+# Every release
+storescreens upload-build --dry-run   # sanity check
+storescreens upload-build             # archive + export + upload to ASC/TestFlight
+
+# Later, once TestFlight has processed the build:
+storescreens submit                   # upload screenshots + metadata and attach to the version
+```
+
+Apple typically takes 5-20 minutes to process the uploaded binary before it shows up on a version in App Store Connect. If `submit` runs before processing finishes, it will upload metadata and screenshots but the "Build" field on the version will still need to be set manually (or via a later `submit` run).
+
+### 10b.h. Reference
+
+Full schema, all fields with defaults, credential resolution, and troubleshooting: `references/upload-build-reference.md`.
+
+---
+
 ## Step 11: Upload to storescreens.app (optional, opt-in)
 
 The CLI can upload screenshots to [storescreens.app](https://storescreens.app) for visual editing (device frames, backgrounds, marketing text). This is **disabled by default**.
@@ -932,4 +1055,5 @@ Most apps do **not** need this - leave it unset (default: off).
 - Full capture config schema: `references/config-reference.md`
 - Full render config schema (background, scrim, logo, caption, chrome, bezels, panoramic, markdown, highlights, fonts): `references/render-reference.md`
 - Full App Store Connect upload schema (`app_store_connect:` block, credentials, metadata files, `submit` flags, destructive semantics, troubleshooting): `references/submit-reference.md`
+- Full archive + binary upload schema (`upload_build:` block, non-beta Xcode auto-selection, ExportOptions.plist generation, altool flow, troubleshooting): `references/upload-build-reference.md`
 - ScreenshotTests starter template: `../storescreens-cli/Sources/storescreens-cli/Resources/ScreenshotTests.swift.template`
