@@ -82,6 +82,8 @@ curl -fsSL https://raw.githubusercontent.com/ciscoriordan/storescreens-cli/main/
 
 Find the `.xcworkspace` or `.xcodeproj` in the working directory. Identify the scheme name (usually matches the app name). You'll need both for `storescreens.yml` and the `xcodebuild` verify command later.
 
+Also check for XcodeGen: if `project.yml` exists at the repo root, this project is XcodeGen-managed. The `.xcodeproj` is a generated artifact, so any target changes must go in `project.yml` and then `xcodegen generate` regenerates the project. Note this state (keep a note or variable like `usesXcodeGen = true`) and branch accordingly in Steps 4 and 7.
+
 ---
 
 ## Step 3: Check for existing `storescreens.yml`
@@ -154,7 +156,42 @@ Look for an existing UI test target by searching for `*UITests` directories or `
 
 Check whether `ScreenshotTests.swift` exists inside it. If it does, skip to Step 6. If it doesn't, proceed to Step 5 to write the test file.
 
-**If no UI test target exists:**
+**If no UI test target exists and the project is XcodeGen-managed (`project.yml` exists):**
+
+Don't ask the user to create the target in Xcode. Editing the generated `.xcodeproj` directly is pointless because `xcodegen generate` wipes those changes. Add the target to `project.yml` yourself.
+
+Append to the `targets:` block:
+
+```yaml
+  <AppName>UITests:
+    type: bundle.ui-testing
+    platform: iOS
+    deploymentTarget: "<same as the app target>"
+    sources:
+      - path: <AppName>UITests
+    dependencies:
+      - target: <AppName>
+    settings:
+      PRODUCT_BUNDLE_IDENTIFIER: <app bundle id>.uitests
+      GENERATE_INFOPLIST_FILE: YES
+```
+
+Also add the test target to the app scheme's `test:` block so `xcodebuild test` can discover it:
+
+```yaml
+schemes:
+  <AppName>:
+    build:
+      targets:
+        <AppName>: all
+    test:
+      targets:
+        - <AppName>UITests
+```
+
+Then run `xcodegen generate` to regenerate the `.xcodeproj`. After that, proceed to Step 5.
+
+**If no UI test target exists and the project is not XcodeGen-managed:**
 
 Tell the user they need to create one manually in Xcode (this cannot be done from code):
 
@@ -238,7 +275,9 @@ After you decide the screens, write the same list under top-level `screenshots:`
 
 Use `assets/ScreenshotTests.swift.template` as a starting point. Place the file inside the `<AppName>UITests/` folder.
 
-After writing the file, tell the user:
+For XcodeGen-managed projects (`project.yml` exists): the file goes in `<AppName>UITests/` matching the `sources:` path in `project.yml`. No "Add Files to target" step is needed because XcodeGen picks up every `.swift` file under that directory on the next `xcodegen generate`. Run `xcodegen generate` after writing the file, then continue to Step 7.
+
+For projects without XcodeGen, tell the user:
 
 > Add `ScreenshotTests.swift` to the Xcode target:
 > Right-click the `<AppName>UITests` group → Add Files to "[project]" → select `ScreenshotTests.swift` → confirm the target membership checkbox is checked.
@@ -246,6 +285,8 @@ After writing the file, tell the user:
 ---
 
 ## Step 7: Verify the build
+
+If the project is XcodeGen-managed, run `xcodegen generate` first so the `.xcodeproj` reflects the new test target and any `ScreenshotTests.swift` additions. Any time you edit `project.yml` or add/remove test files, regenerate before invoking `xcodebuild`.
 
 Pipe xcodebuild output to a log file so you can inspect errors:
 
