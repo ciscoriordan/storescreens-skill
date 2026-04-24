@@ -2,7 +2,7 @@
 
 `storescreens submit` uploads rendered screenshots and per-locale metadata (name, subtitle, description, keywords, what's new, etc.) to App Store Connect via Apple's official API. It is a wholly separate step from `capture` and `render`: you must have already captured, rendered, and be happy with the output before running `submit`.
 
-By default `submit` stops after the uploads and leaves review submission to you. Set `submit_for_review: true` in the `submit:` block to also submit the version for App Review once screenshots and metadata are done. Internally this uses Apple's newer `reviewSubmissions` 3-step flow (create submission, add the version as an item, submit), transparent to the user; the submission ID is surfaced in the report. See `submit_for_review` below.
+By default `submit` stops after the uploads and leaves review submission to you. Set `submit_for_review: true` in the `submit:` block (or pass `--submit-for-review` on a single run without touching the yml) to also submit the version for App Review once screenshots and metadata are done. Internally this uses Apple's newer `reviewSubmissions` 3-step flow (create submission, add the version as an item, submit), transparent to the user; the submission ID is surfaced in the report. See `submit_for_review` below.
 
 ## Top-level shape
 
@@ -155,6 +155,7 @@ The command is non-destructive by default: it creates missing locale subdirector
 | `--dry-run` | Validate everything, write nothing. |
 | `--skip-screenshots` | Upload metadata only. |
 | `--skip-metadata` | Upload screenshots only. |
+| `--submit-for-review` / `--no-submit-for-review` | Override `app_store_connect.submit.submit_for_review` for this run. Use the positive form to trigger review submission without editing the yml; the negative form suppresses it even when the yml sets `true`. When neither flag is passed, the yml value is used. Combine with `--skip-screenshots --skip-metadata` to fire only the review submission against an already-uploaded version. |
 
 ## Destructive upload semantics
 
