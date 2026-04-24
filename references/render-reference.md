@@ -8,6 +8,7 @@ The `render:` block in `storescreens.yml` drives a compositing pipeline that tur
 render:
   enabled: true
   output_dir: ./storescreens-framed   # optional; default ./storescreens-framed
+  template: sahara                    # optional; see "Templates" below
 
   background: { ... }
   scrim:      { ... }
@@ -22,7 +23,45 @@ render:
 
 Every sub-block (background, scrim, logo, caption, chrome) may also appear inside a per-slide entry under `slides:` and will override the top-level value for just that slide.
 
-Slide resolution order (narrow wins): `slides."01_Home".caption.title.color` overrides `caption.title.color`.
+Slide resolution order (narrow wins): `slides."01_Home".caption.title.color` overrides `caption.title.color`. When a `template:` is set, its values act as the outermost defaults — user-supplied fields in the top-level `render:` still win.
+
+## Templates
+
+`template:` is an optional preset name that seeds `background`, `caption`, and `chrome` with a curated color + typography + background-pattern bundle. Any explicit field in the same `render:` block overrides the template's value for that field (field-level merge, not block-level replace).
+
+Built-in templates (list live with `storescreens templates` or `storescreens templates --json`):
+
+| id | look | best for |
+|---|---|---|
+| `ascent` | Cream paper with topographic contours | Outdoor, fitness, health |
+| `all_the_wiser` | Warm cream with scattered playful shapes | Education, kids, language |
+| `ethereal` | Warm taupe gradient, soft serif | Wellness, meditation, lifestyle |
+| `sahara` | Sand-to-terracotta gradient with dune layers | Travel, adventure |
+| `midnight` | Deep charcoal with champagne accent text | Premium, entertainment, nightlife |
+| `pinecrest` | Forest moss gradient with cream type | Games, health, lifestyle |
+| `blueprint` | Pale drafting paper with a grid | Developer tools, productivity |
+| `sunset_blvd` | Four-stop sunset gradient with display type | Entertainment, lifestyle, social |
+
+Lookup is case-insensitive and ignores dashes/underscores (`sunset_blvd`, `sunsetblvd`, `Sunset Blvd` all resolve to the same template). Unknown names log a warning and the render runs without template defaults.
+
+CLI override:
+
+```bash
+storescreens render --template sahara    # overrides any `template:` in the YAML
+```
+
+Patterns can also be used directly without a template by setting `background.pattern`:
+
+```yaml
+background:
+  color: "#F4EFE7"
+  pattern:
+    pattern: topographic     # topographic | blueprint_grid | dune_layers | soft_waves | gamified_shapes
+    color: "#1A1F2E"         # accent / line color, default "#000000"
+    opacity: 0.15            # 0..1, default 0.25
+```
+
+Patterns draw on top of the solid/gradient color fill and under any user-supplied image. In multi-slide panoramas the pattern spans the full combo width and each slide renders its horizontal slice — adjacent slides line up seamlessly in the App Store Connect gallery.
 
 ## Appearance variants
 
@@ -92,6 +131,9 @@ logo:
   placement: first_only            # first_only | all | none
   max_height_pct: 6                # % of canvas height
   top_padding_pct: 3               # % of canvas height
+  nudge:                           # optional fine-tune offset
+    x_pct: 0                       # positive = right, negative = left
+    y_pct: 0                       # positive = up, negative = down
 ```
 
 - `first_only` (default-ish): logo only on the first slide in `screenshots:` order.
@@ -99,6 +141,8 @@ logo:
 - `none`: no logo (use to disable at slide level).
 
 SVG and PNG both work. Variant-aware so dark-mode can use a different file.
+
+`nudge.x_pct` and `nudge.y_pct` are canvas-percentage offsets applied on top of the default center-top placement — the same scale as everything else in the render config, so a nudge stays the same relative position across device sizes.
 
 ## caption
 
@@ -126,9 +170,20 @@ caption:
   spacing_pct: 1.0            # vertical gap between title and subtitle (% of canvas height)
   min_height_pct: 22          # reserves at least this much vertical space above the screenshot
   padding_pct: 5              # horizontal inset for the whole caption block
+
+  vertical_align: center      # top | center (default) | bottom — where the block sits in its band
+  nudge:                      # fine-tune offset applied after vertical_align
+    x_pct: 0                  # positive = right, negative = left
+    y_pct: 0                  # positive = up, negative = down
 ```
 
 `min_font_size_pct` matters because captions auto-shrink to fit - if the title is long, the renderer steps the point size down until it either fits on one line or hits this floor (then wraps).
+
+`align`, `vertical_align`, and `nudge` are independent:
+
+- `title.align` / `subtitle.align` — each role's horizontal alignment (left / center / right). Per-role so title and subtitle can align differently.
+- `vertical_align` — where the caption block sits inside its reserved band (`min_height_pct`). Block-level; title and subtitle move together.
+- `nudge.x_pct` / `nudge.y_pct` — fine-grained offset applied on top of the computed position. Also block-level. Useful for matching a specific mockup or nudging away from a notch/island.
 
 ## Fonts
 

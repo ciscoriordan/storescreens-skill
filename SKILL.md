@@ -452,6 +452,25 @@ Per-project override: drop PNG + JSON sidecar files into `./bezels/` next to `st
 
 ### 9d. Add a `render:` block - build it up incrementally
 
+**Fast path - start from a named template.** If the user wants a sensible default look instead of hand-tuning every field, pick a built-in template. List them:
+
+```bash
+storescreens templates
+```
+
+Then seed the config:
+
+```yaml
+render:
+  enabled: true
+  template: sahara     # or: ascent, all_the_wiser, ethereal, midnight, pinecrest, blueprint, sunset_blvd
+  output_dir: ./storescreens-framed
+```
+
+The template fills in `background`, `caption`, and `chrome` defaults (curated palette + typography + a procedural background pattern where appropriate). Anything the user writes explicitly in the same `render:` block still wins over the template — treat the template as "defaults I can override," not a lock-in. The sections below still apply when the user wants to tune individual fields.
+
+Once picked, continue with per-slide captions (Step 9d's "slides:" block below). Most users won't need the background / scrim / chrome sections when using a template.
+
 Don't dump a huge render block on the user and hope it renders well. Add fields one at a time, run `storescreens render` after each, and open `preview.html` to inspect.
 
 Start with the minimum:
