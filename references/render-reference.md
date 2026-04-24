@@ -41,6 +41,7 @@ Built-in templates (list live with `storescreens templates` or `storescreens tem
 | `pinecrest` | Forest moss gradient with cream type | Games, health, lifestyle |
 | `blueprint` | Pale drafting paper with a grid | Developer tools, productivity |
 | `sunset_blvd` | Four-stop sunset gradient with display type | Entertainment, lifestyle, social |
+| `jazz_and_wine` | Deep bordeaux with elegant cream serif | Food, drink, hospitality, creative |
 
 Lookup is case-insensitive and ignores dashes/underscores (`sunset_blvd`, `sunsetblvd`, `Sunset Blvd` all resolve to the same template). Unknown names log a warning and the render runs without template defaults.
 
