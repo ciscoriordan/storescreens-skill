@@ -602,7 +602,7 @@ Full schema and every flag: `references/submit-reference.md`.
 
 Walk the user through this (they do it in a browser, once per team):
 
-1. Open <https://appstoreconnect.apple.com/access/api>.
+1. Open <https://appstoreconnect.apple.com/access/integrations/api>.
 2. Click the "+" to generate a new key. Access level: "Admin" or "App Manager".
 3. Download the resulting `AuthKey_XXXXXX.p8` file. Apple only lets you download it once - store it somewhere safe, e.g. `~/.appstoreconnect/`.
 4. From the same page, record:
