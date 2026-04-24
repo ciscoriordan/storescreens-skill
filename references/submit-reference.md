@@ -169,6 +169,18 @@ Metadata uploads are PATCHes. Only fields you included in `metadata/<locale>/` a
 
 If you do not want a locale's screenshots re-ordered or wiped, either omit that locale from `metadata/` (metadata side) or pass `--skip-screenshots` for that run.
 
+## Idempotent re-runs
+
+Both sides of `submit` diff against App Store Connect before writing, so re-running an unchanged submission is cheap and mostly silent.
+
+**Metadata.** Before PATCHing each version localization, `submit` fetches the current attributes from `GET /appStoreVersionLocalizations/{id}`. It sends only fields whose file content differs from the live value; fields that already match are dropped from the PATCH body. If no field differs, the PATCH is skipped entirely and the locale does not appear in `report.metadataUpdates`. Privacy URL (on the AppInfo localization) follows the same pattern.
+
+**Screenshots.** Before wiping each set, `submit` calls `GET /appScreenshotSets/{id}/appScreenshots` and reads `sourceFileChecksum` (MD5 of the file bytes) and order. It then MD5s the local render PNGs in manifest order. If the lists match position-for-position, no DELETE or upload calls fire. The entry still appears in `report.screenshotUploads` with `count: 0` so the skip is visible.
+
+Any mismatch — different file content, different count, different order — falls back to the full wipe+reupload. This is correct because ASC's upload model can't reorder existing screenshots in place; a reorder is semantically a wipe.
+
+Practical effect: re-submitting after a rejection with only release-notes changes PATCHes only the `whatsNew` field and skips all 32 (or however many) screenshot uploads. Re-submitting with no changes at all is a handful of GETs and returns in seconds.
+
 ## Dry run
 
 ```bash

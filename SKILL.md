@@ -749,6 +749,8 @@ Reports per-locale metadata updates, per-(locale, display type) screenshot uploa
 
 **Destructive behaviour for screenshots:** each App Store Connect screenshot set is wiped and re-populated from the rendered manifest so the local render is always the source of truth. The manifest's order becomes the App Store display order. Metadata uploads are non-destructive PATCHes: only fields with a file in `metadata/<locale>/` are sent.
 
+**Idempotent re-runs:** `submit` diffs before writing. For metadata it reads the current version-localization attributes and sends only fields that actually differ; a locale whose fields all match is skipped without a PATCH. For screenshots it reads each existing entry's `sourceFileChecksum` (MD5) and compares to the local render's MD5 in manifest order — if the set already matches, the wipe+reupload is skipped entirely. The report lists skipped locales with `count: 0` so re-running after a no-op release (e.g. re-submitting after a rejection without content changes) is cheap and observable.
+
 **Remind the user:** with the default `submit_for_review: false`, `submit` stops after the uploads. Open App Store Connect, navigate to the version, and click "Submit for Review" manually. To skip that step, set `submit_for_review: true` and `submit` will drive Apple's newer `reviewSubmissions` 3-step flow (create submission, add the version as an item, submit) once screenshots and metadata upload cleanly; the submission ID appears in the report output. The 3-step flow is transparent to the user.
 
 ### 10h. Useful flags
