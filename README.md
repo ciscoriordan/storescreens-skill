@@ -109,6 +109,7 @@ StoreScreens complements [Xcode's built-in MCP server](https://developer.apple.c
 - **`references/render-reference.md`** - Full `render:` schema: background (including panoramic slicing), scrim, logo, caption (fonts, markdown, highlights), chrome (stroke / bezel), bezel install flow, caption shorthands, and a complete example
 - **`references/submit-reference.md`** - Full App Store Connect upload schema: `app_store_connect:` block, `submit:` sub-block, credential resolution (env + `~/.storescreens/asc-credentials.yml`), `metadata/<locale>/*.txt` file layout and ASC field mapping, destructive upload semantics, troubleshooting, and a complete example
 - **`references/upload-build-reference.md`** - Full `upload_build:` schema: archiving, `.ipa` export, `altool` upload to App Store Connect / TestFlight, auto-versioning, non-beta Xcode auto-selection, and troubleshooting
+- **`assets/ScreenshotTests.swift.template`** - Starter XCUITest template. Mirrored from `storescreens-cli`'s `Resources/` on every release so it stays in sync with the CLI's expected cache-path contract.
 
 ## Related
 
