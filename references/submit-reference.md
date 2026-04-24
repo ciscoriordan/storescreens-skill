@@ -233,10 +233,10 @@ test_class: ScreenshotTests
 derived_data_path: ~/.storescreens-cache/Recipes
 
 screenshots:
-  - 01_Home
-  - 02_Search
-  - 03_Detail
-  - 04_MealPlan
+  - Home
+  - Search
+  - Detail
+  - MealPlan
   - 05_Shopping
 
 render:
@@ -254,9 +254,9 @@ render:
       color: "#ffffff"
     min_height_pct: 22
   slides:
-    "01_Home":
+    "Home":
       caption: "Every recipe, **organized**."
-    "02_Search":
+    "Search":
       caption:
         - "Find anything"
         - "in *seconds*."

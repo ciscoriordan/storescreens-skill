@@ -229,10 +229,12 @@ Key requirements for the test file:
 
 - `app.launchArguments = ["--uitesting"]`
 - Wait for the app to fully load before the first screenshot: `XCTAssertTrue(element.waitForExistence(timeout: 20))`
-- Name screenshots with a numeric prefix: `"01_Home"`, `"02_Detail"`, etc.
-- Use **accessibility identifiers** for all element lookups - ask the user what identifiers exist or help them add them. Avoid fragile text/position-based queries.
+- Name screenshots with their meaningful identifier only: `"Home"`, `"Detail"`, `"MealPlan"`. No numeric prefixes. The capture pipeline stamps each output PNG's mtime and creationDate in the order of the `screenshots:` list in `storescreens.yml`, so `ls -t` and Finder's "Date Created" sort match the configured display order without needing `01_` / `02_` prefixes.
+- Use accessibility identifiers for all element lookups - ask the user what identifiers exist or help them add them. Avoid fragile text/position-based queries.
 - Always `waitForExistence(timeout:)` before tapping any element
 - Clean up any state changed during the test (e.g. delete test permits/data added during the flow) at the end
+
+After you decide the screens, write the same list under top-level `screenshots:` in `storescreens.yml`. That list is the single source of truth for display order: it drives capture filtering, HTML preview ordering, render order, and mtime stamping.
 
 Use `assets/ScreenshotTests.swift.template` as a starting point. Place the file inside the `<AppName>UITests/` folder.
 
@@ -377,15 +379,17 @@ storescreens-output/
 ├── logs/
 │   └── test-<device>.log  ← one per device
 ├── light/
-│   ├── iPhone_6.9_01_Home.png
-│   ├── iPhone_6.9_02_Detail.png
-│   ├── iPhone_6.3_01_Home.png
+│   ├── iPhone_6.9_Home.png
+│   ├── iPhone_6.9_Detail.png
+│   ├── iPhone_6.3_Home.png
 │   └── ...
 └── dark/
-    ├── iPhone_6.9_01_Home.png
-    ├── iPhone_6.9_02_Detail.png
+    ├── iPhone_6.9_Home.png
+    ├── iPhone_6.9_Detail.png
     └── ...
 ```
+
+Screenshot names are the meaningful identifier only (`Home`, `Detail`, `Search`). The capture pipeline stamps each output PNG's mtime + creationDate in the order of the top-level `screenshots:` list in `storescreens.yml`, so `ls -t storescreens-output/light/` and Finder's "Date Created" sort match the configured App Store display order without numeric prefixes.
 
 ---
 
@@ -413,13 +417,13 @@ Add the authoritative order at the top level of `storescreens.yml`:
 
 ```yaml
 screenshots:
-  - 01_Home
-  - 02_Search
-  - 03_Detail
+  - Home
+  - Search
+  - Detail
   # ...
 ```
 
-This list drives BOTH capture filtering AND render order. A panoramic background's left edge pins to the first entry here. `logo.placement: first_only` puts the logo on the first entry here.
+This list is the single source of truth for display order. It drives capture filtering, render order, HTML preview order, and mtime stamping on the output PNGs (first in list = most recent mtime, so `ls -t` and Finder's "Date Created" both match). A panoramic background's left edge pins to the first entry here. `logo.placement: first_only` puts the logo on the first entry here.
 
 ### 9c. Install bezels (only if using `chrome.style: bezel`)
 
@@ -552,13 +556,13 @@ Then fill in per-slide caption text:
 
 ```yaml
   slides:
-    "01_Home":
+    "Home":
       caption: "Your recipes, organized."        # shorthand: title only
-    "02_Search":
+    "Search":
       caption:                                    # array: strict line breaks
         - "Find anything"
         - "in *seconds*."
-    "03_Detail":
+    "Detail":
       caption:                                    # full object
         title: "Every **detail**, at a glance."
         subtitle: "Powered by AI"
@@ -1008,8 +1012,8 @@ Or with a full path if not on `$PATH`:
 
 ```
 ● Building for testing…
-  ✓ iPhone 17 Pro Max [iPhone 6.9"] 01_Home → storescreens-output/light/iPhone_6.9_01_Home.png
-  ✓ iPhone 17 Pro Max [iPhone 6.9"] 02_Detail → storescreens-output/light/iPhone_6.9_02_Detail.png
+  ✓ iPhone 17 Pro Max [iPhone 6.9"] Home → storescreens-output/light/iPhone_6.9_Home.png
+  ✓ iPhone 17 Pro Max [iPhone 6.9"] Detail → storescreens-output/light/iPhone_6.9_Detail.png
   ● Device complete: iPhone 17 Pro Max - 2 screenshots
 
 captureId: a1b2c3d4

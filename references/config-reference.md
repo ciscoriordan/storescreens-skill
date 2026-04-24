@@ -60,8 +60,8 @@ test_class: ScreenshotTests
 # render background's left edge pins to the first entry; logo placement
 # (first_only) uses the first entry here.
 # screenshots:
-#   - "01_Home"
-#   - "02_Detail"
+#   - "Home"
+#   - "Detail"
 
 # Preflight iPad-safety scan before capture (default: true)
 # preflight: true
@@ -82,7 +82,7 @@ test_class: ScreenshotTests
 #     title: { font: system, weight: bold, font_size_pct: 5.5, color: "#ffffff" }
 #     min_height_pct: 22
 #   slides:
-#     "01_Home": { caption: "Your recipes, organized." }
+#     "Home": { caption: "Your recipes, organized." }
 
 # Upload rendered screenshots + per-locale metadata to App Store Connect
 # via `storescreens submit`. Credentials come from env vars (ASC_KEY_ID,

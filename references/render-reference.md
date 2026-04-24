@@ -17,13 +17,13 @@ render:
   chrome:     { ... }
 
   slides:
-    "01_Home":   { ... }   # per-slide overrides keyed by screenshot name
-    "02_Detail": { ... }
+    "Home":   { ... }   # per-slide overrides keyed by screenshot name
+    "Detail": { ... }
 ```
 
 Every sub-block (background, scrim, logo, caption, chrome) may also appear inside a per-slide entry under `slides:` and will override the top-level value for just that slide.
 
-Slide resolution order (narrow wins): `slides."01_Home".caption.title.color` overrides `caption.title.color`. When a `template:` is set, its values act as the outermost defaults — user-supplied fields in the top-level `render:` still win.
+Slide resolution order (narrow wins): `slides."Home".caption.title.color` overrides `caption.title.color`. When a `template:` is set, its values act as the outermost defaults — user-supplied fields in the top-level `render:` still win.
 
 ## Templates
 
@@ -246,7 +246,7 @@ Literal substring overrides for a caption. Applied after markdown parsing. Case-
 
 ```yaml
 slides:
-  "03_Detail":
+  "Detail":
     caption:
       title: "Every detail, at a glance."
       highlights:
@@ -264,17 +264,17 @@ The `caption:` field under a slide supports three input shapes:
 
 ```yaml
 # 1. bare string - title only, auto-wraps at canvas width
-"01_Home":
+"Home":
   caption: "Your recipes, organized."
 
 # 2. array of strings - title with STRICT line breaks (items never wrap inside themselves)
-"02_Search":
+"Search":
   caption:
     - "Resident or non-resident."
     - "Standard or enhanced."
 
 # 3. full object - title + subtitle + highlights + per-slide style overrides
-"03_Detail":
+"Detail":
   caption:
     title:
       - "Every **detail**,"
@@ -399,8 +399,8 @@ Reads from the latest capture's output (`output_dir/`) and writes the rendered f
 storescreens-framed/
 ├── preview.html
 ├── light/
-│   ├── iPhone_6.9_01_Home.png
-│   ├── iPhone_6.9_02_Detail.png
+│   ├── iPhone_6.9_Home.png
+│   ├── iPhone_6.9_Detail.png
 │   └── ...
 └── dark/
     └── ...
@@ -442,10 +442,10 @@ test_class: ScreenshotTests
 derived_data_path: ~/.storescreens-cache/Recipes
 
 screenshots:
-  - 01_Home
-  - 02_Search
-  - 03_Detail
-  - 04_MealPlan
+  - Home
+  - Search
+  - Detail
+  - MealPlan
   - 05_Shopping
 
 render:
@@ -501,21 +501,21 @@ render:
     colorway_preference: ["Space Black", "Natural Titanium"]
 
   slides:
-    "01_Home":
+    "Home":
       caption:
         title: "Every recipe, **organized**."
         subtitle: "Save, tag, and find in seconds."
-    "02_Search":
+    "Search":
       caption:
         - "Find anything"
         - "in *seconds*."
-    "03_Detail":
+    "Detail":
       caption:
         title: "Every **detail**, at a glance."
         subtitle: "Ingredients, steps, timers."
         highlights:
           - { match: "detail", color: "#feb909", weight: heavy }
-    "04_MealPlan":
+    "MealPlan":
       caption:
         title: "Plan your week in **one tap**."
     "05_Shopping":
