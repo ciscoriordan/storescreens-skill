@@ -222,6 +222,7 @@ tables:
       font: system
       weight: bold
       align: center
+    column_aligns: [left, right]     # optional; per-column horizontal align
     border:
       enabled: true                  # default
       width_pct: 0.15                # default; % of canvas height
@@ -236,6 +237,8 @@ tables:
 
 Use `columns:` instead of `rows:` to supply column-major content; the renderer transposes internally. Rows of unequal length are padded with empty cells at the end so the grid is always rectangular.
 
+Cell content can include `\n` for in-cell line breaks; the row containing the multi-line cell auto-grows to fit. With auto font sizing, this comes out of the table's overall `max_height_pct` budget — a row with 2-line cells is twice the height of a 1-line row, so other rows shrink proportionally.
+
 ### Fields
 
 | Field | Default | Notes |
@@ -244,7 +247,8 @@ Use `columns:` instead of `rows:` to supply column-major content; the renderer t
 | `columns` | optional | Column-major alternative to `rows`. Used only when `rows` is nil. |
 | `text_color` | `#FFFFFF` | Cell text color. Hex string or `{ light:, dark: }`. |
 | `border_color` | `#FFFFFF` | Border color. Independent from `text_color`. |
-| `cell_style` | bold + `text_color` + center align | Same fields as `caption.title`. When `font_size_pct` is omitted, the renderer auto-derives one size that fits inside `max_height_pct / row_count` and applies it to every cell uniformly. |
+| `cell_style` | bold + `text_color` + center align | Same fields as `caption.title`. When `font_size_pct` is omitted, the renderer auto-derives one size that fits inside `max_height_pct` divided across the total number of text lines (so a row containing a 2-line cell takes twice the height of a 1-line row). |
+| `column_aligns` | inherits from `cell_style.align` | Per-column horizontal alignment override. e.g. `[left, right]` for a 2-column table left-aligns column 0 and right-aligns column 1. Cells without an entry inherit `cell_style.align` (default center). |
 | `border.enabled` | `true` | Set `false` to draw text-only with no lines. |
 | `border.width_pct` | `0.15` | Percent of canvas height. |
 | `border.sides` | `[outer, inner]` | List of which lines to draw. `outer` expands to the four outer edges; `inner` to grid lines between cells. Per-side names (`top`, `bottom`, `left`, `right`) override slices of `outer`. |
@@ -376,6 +380,16 @@ Supported:
 | `[text](url)` | link (underline + color; url not clickable in an image) |
 
 For correct bold/italic rendering, prefer a `bundle`-form font with all four faces.
+
+### Gotchas
+
+`**bold**` and `*italic*` step the text up to the next-heavier face. The base style needs headroom or the markup is silently a no-op:
+
+- `weight: bold` already at the font's heaviest face: `**X**` strips the markers and renders identically. There's no heavier weight to step up to.
+- `italic: true` set as the base: `*X*` likewise has nowhere to go.
+- The system font has bold / heavy / black faces. Most Google Fonts ship with a known set of weights; if you use a non-bundle Google Fonts entry, only the regular and bold variants are auto-fetched, so `weight: bold` makes `**X**` a no-op. Switch to a `bundle`-form font with explicit `bold_url` + `regular_url` (and `heavy_url` if you want even more headroom) to get the markdown to do something.
+
+Quick rule: pick the lightest base weight that still reads, and let `**markdown**` carry the emphasis.
 
 ## Highlights (per-slide)
 
