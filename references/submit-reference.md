@@ -32,6 +32,8 @@ app_store_connect:
 | `bundle_id` | string | - | Bundle identifier (e.g. `com.example.recipes`). Resolved via `GET /v1/apps?filter[bundleId]=...` at submit time. More convenient; use this unless you have a reason to hard-code the numeric ID. |
 | `metadata_dir` | string | `./metadata` | Directory containing `<locale>/*.txt` files. Relative paths resolve against the directory containing `storescreens.yml`. |
 | `submit` | object | - | Upload behaviour. See below. |
+| `pricing` | object | - | App-level pricing. Optional; unset leaves the existing schedule untouched. Today only free pricing is implemented. See "`pricing:` fields" below. |
+| `availability` | object | - | Territory availability. Optional; unset leaves current availability untouched. See "`availability:` fields" below. |
 
 ## `submit:` fields
 
@@ -42,6 +44,38 @@ app_store_connect:
 | `metadata` | bool | `true` | Upload per-locale metadata. Set to `false` for a screenshots-only submit. Also controllable via `--skip-metadata`. |
 | `submit_for_review` | bool | `false` | When `true`, `submit` drives Apple's `reviewSubmissions` 3-step flow (create submission, attach the version as an item, submit) after screenshots and metadata have been uploaded successfully. The submission ID is included in the report output. Submission runs only after the uploads succeed, so the version is complete when Apple picks it up. Default is `false` because review submission is irreversible without reviewer intervention, so opt in explicitly when you are ready to ship. (Internal note: storescreens-cli previously used the older `appStoreVersionSubmissions` endpoint; the migration to `reviewSubmissions` is transparent to users - same YAML flag, same external behavior.) |
 | `platform` | string | `IOS` | ASC platform enum: `IOS`, `MAC_OS`, `TV_OS`, `VISION_OS`. Rarely needs override; derive from your app's actual platform. |
+
+## `pricing:` fields
+
+Sets the app's price schedule. Today only the free case is implemented - use the ASC web UI for paid pricing until a `price_tier` field lands. Runs idempotently: if the app already has a schedule, submit leaves it untouched rather than replacing it. This is intentional - blindly re-POSTing would overwrite anything a teammate set by hand.
+
+```yaml
+app_store_connect:
+  pricing:
+    free: true
+    base_territory: USA
+```
+
+| Field | Type | Default | Notes |
+|-------|------|---------|-------|
+| `free` | bool | - | Required when the `pricing:` block is present. `true` creates a free schedule in the base territory; Apple auto-computes free prices everywhere else. `false` is rejected (paid pricing not yet wired up). |
+| `base_territory` | string | `USA` | ISO 3166-1 alpha-3 territory code used to anchor the schedule. Any territory works; USA matches the ASC web UI default. |
+
+## `availability:` fields
+
+Sets which territories the app is available in. Required before a new app can be submitted for review; existing apps keep their current availability unless you change this block. Runs idempotently: matches the current list before POSTing.
+
+```yaml
+app_store_connect:
+  availability:
+    territories: all                    # or: ["USA", "CAN", "GBR"]
+    available_in_new_territories: true
+```
+
+| Field | Type | Default | Notes |
+|-------|------|---------|-------|
+| `territories` | `"all"` or list of ISO 3166-1 alpha-3 codes | - | `all` resolves to every territory Apple supports at submit time (expanded via `GET /v1/territories`). A list limits availability to the specified territories only. Unset skips the availability step entirely. |
+| `available_in_new_territories` | bool | `true` | When Apple adds a new territory to the App Store, auto-enroll the app. Matches ASC's own default. |
 
 ## Metadata directory layout
 
@@ -205,6 +239,7 @@ No writes happen. Use this as your pre-flight before a live submit.
 - **`8MB limit exceeded`** - Apple caps individual screenshots at 8 MB. Reduce render complexity (smaller background image, lighter scrim) or lower PNG compression.
 - **`app_store_connect.submit.create_version is required`** - set `submit.create_version` in the YAML or pass `--version-override`.
 - **Locale not appearing in the upload summary** - every `metadata/<locale>/` file was empty or unknown. Only supported filenames (`name.txt`, `subtitle.txt`, `description.txt`, `keywords.txt`, `promotional_text.txt`, `release_notes.txt`, `support_url.txt`, `marketing_url.txt`, `privacy_url.txt`) count; anything else is skipped with a warning.
+- **`release_notes.txt` is ignored on first submission** - App Store Connect rejects "What's New" text on a brand-new app's first version because release notes are semantically "what changed since the last release." `submit` detects this case by listing the app's versions and skips the `whatsNew` attribute in the PATCH, emitting a `skipping whatsNew (...)` progress line. The file is still read, just not sent this time; subsequent version submissions (after the app is live) will pick it up automatically.
 
 ## Complete example
 
