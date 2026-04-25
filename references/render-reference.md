@@ -12,7 +12,9 @@ render:
 
   background: { ... }
   scrim:      { ... }
-  logo:       { ... }
+  images:     [ ... ]                 # 0-2 entries, replaces legacy `logo:`
+  laurels:    [ ... ]                 # 0-2 entries, award-badge overlays
+  logo:       { ... }                 # deprecated; see `images:` below
   caption:    { ... }
   chrome:     { ... }
 
@@ -21,7 +23,7 @@ render:
     "Detail": { ... }
 ```
 
-Every sub-block (background, scrim, logo, caption, chrome) may also appear inside a per-slide entry under `slides:` and will override the top-level value for just that slide.
+Every sub-block (background, scrim, images, laurels, logo, caption, chrome) may also appear inside a per-slide entry under `slides:` and will override the top-level value for just that slide. `images:` and `laurels:` are arrays, so a slide-level value replaces the top-level array wholesale (no element-by-element merge).
 
 Slide resolution order (narrow wins): `slides."Home".caption.title.color` overrides `caption.title.color`. When a `template:` is set, its values act as the outermost defaults — user-supplied fields in the top-level `render:` still win.
 
@@ -80,7 +82,7 @@ or a single scalar that's used for both:
 image: ./bg.png
 ```
 
-Applies to: `background.image`, `background.color`, `logo.path`.
+Applies to: `background.image`, `background.color`, `images[].path`, `laurels[].color`, `logo.path`.
 
 ## background
 
@@ -122,7 +124,91 @@ scrim:
 
 If `gradient` is set, it overrides `opacity`.
 
+## images
+
+Up to two image overlays per slide, dropped into one of three caption-relative slots. Replaces the legacy `logo:` block for new configs.
+
+```yaml
+images:
+  - path: ./assets/logo.svg          # or { light:, dark: } variant
+    position: above_title            # above_title | below_title | above_subtitle | below_subtitle
+    align: center                    # left | center (default) | right
+    max_height_pct: 8                # % of canvas height; default 8
+    placement: first_only            # first_only | all | none
+    nudge:                           # optional fine-tune offset
+      x_pct: 0                       # positive = right, negative = left
+      y_pct: 0                       # positive = up, negative = down
+```
+
+### Fields
+
+| Field | Default | Notes |
+|---|---|---|
+| `path` | required | File path (relative to config dir, absolute, or `~/`). PNG or SVG. Accepts `{ light:, dark: }` variant. |
+| `position` | `above_title` | Slot for the overlay. `below_title` and `above_subtitle` are aliases for the same physical slot (the band between title and subtitle). When the slide has no subtitle, `above_subtitle` and `below_subtitle` collapse to "directly under the title". |
+| `align` | `center` | Horizontal alignment within the slot. |
+| `max_height_pct` | `8` | Image height as a percentage of canvas height. Width follows the source aspect. |
+| `placement` | `first_only` for `above_title`, `all` otherwise | Per-slide visibility. `first_only` draws on slide 1 only; `all` on every slide; `none` disables. |
+| `nudge.x_pct` / `nudge.y_pct` | `0` | Canvas-percentage offset applied after slot placement. Positive x = right; positive y = up. |
+
+### Stacking and conflict resolution
+
+Up to 2 entries may share a slot. The renderer caps at 2 (extras are dropped with a warning).
+
+When two items land in the same slot:
+
+- Same `align`: stacked horizontally as a single group, then aligned together inside the slot.
+- Different `align`: each item placed independently at its own align (may overlap if the slot is too narrow to fit both).
+
+Stacking order follows config order (images before laurels when they share a slot).
+
+## laurels
+
+Laurel "award badge" overlays - left and right laurel SVGs flanking centered title/subtitle text, tinted to a single color. The laurel SVGs ship with the renderer; you supply the text, the color, and the slot.
+
+```yaml
+laurels:
+  - title: "Editors' Choice"
+    subtitle: "App Store"
+    color: "#FFD66B"                 # single hex, or { light:, dark: } variant
+    position: below_subtitle         # default; same slots as images
+    align: center                    # left | center (default) | right
+    max_height_pct: 10               # % of canvas height; default 10
+    placement: all                   # default; first_only | all | none
+    nudge:
+      x_pct: 0
+      y_pct: 0
+    title_style:                     # optional; same fields as caption.title
+      font: system
+      weight: bold
+      italic: false
+      font_size_pct: null            # auto-derived from max_height_pct when null
+      color: "#FFD66B"
+    subtitle_style:                  # optional; same fields as caption.subtitle
+      weight: regular
+      italic: true
+```
+
+### Fields
+
+| Field | Default | Notes |
+|---|---|---|
+| `title` | optional | Top text between the laurels. Bold by default. Accepts a string or array of strings (strict line breaks); markdown supported. |
+| `subtitle` | optional | Bottom text between the laurels. Regular by default. Same shapes as `title`. |
+| `title_style` | inherits from `color` and bold default | Same fields as `caption.title` (font, weight, italic, font_size_pct, color, align). When `font_size_pct` is omitted, the title scales to roughly 30 percent of the laurel block height. |
+| `subtitle_style` | inherits from `color` and regular default | Same fields as `caption.subtitle`. When `font_size_pct` is omitted, the subtitle scales to roughly 18 percent of the laurel block height. |
+| `color` | `#FFFFFF` | Laurel tint, applied as an alpha-mask fill. Single hex or `{ light:, dark: }`. Also supplies the default text color when `title_style.color` / `subtitle_style.color` are unset. |
+| `position` | `below_subtitle` | Same slot values as `images`. |
+| `align` | `center` | Horizontal alignment of the whole laurel block within its slot. |
+| `max_height_pct` | `10` | Block height (laurel + text) as a percentage of canvas height. |
+| `placement` | `all` | Per-slide visibility. Laurels usually want to repeat; default differs from images. |
+| `nudge.x_pct` / `nudge.y_pct` | `0` | Same semantics as `images[].nudge`. |
+
+Up to 2 laurels per slide. Slot stacking follows the same same-align/different-align rules as `images`.
+
 ## logo
+
+> Deprecated: use `images:` for new configs. The `logo:` block is kept for backwards compatibility and is treated as a single image at `above_title` when `images:` is absent. Setting `images: []` (an explicitly empty array) suppresses the legacy fallback.
 
 A wordmark / logo drawn above the screenshot area.
 
@@ -143,7 +229,7 @@ logo:
 
 SVG and PNG both work. Variant-aware so dark-mode can use a different file.
 
-`nudge.x_pct` and `nudge.y_pct` are canvas-percentage offsets applied on top of the default center-top placement — the same scale as everything else in the render config, so a nudge stays the same relative position across device sizes.
+`nudge.x_pct` and `nudge.y_pct` are canvas-percentage offsets applied on top of the default center-top placement, the same scale as everything else in the render config, so a nudge stays the same relative position across device sizes.
 
 ## caption
 
@@ -370,7 +456,7 @@ Drop bezel PNGs + JSON sidecars into `./bezels/` next to `storescreens.yml`. Pro
 The top-level `screenshots:` list is the authoritative order for both capture and render. The render pipeline walks `screenshots:` in the order you wrote it - no alphabetical reordering happens anywhere in the pipeline. This matters for:
 
 - Panoramic backgrounds (first slide pins to left edge of image).
-- `logo.placement: first_only` (first entry in the list).
+- `images[].placement: first_only` (first entry in the list); also the legacy `logo.placement: first_only`.
 - The rendered output filename ordering.
 
 If you omit `screenshots:`, the renderer falls back to the names emitted by the test file.
@@ -423,7 +509,7 @@ Filenames mirror the capture output. You upload these directly to App Store Conn
 
 ## Complete example
 
-A recipes app, 6.9" + iPad Pro 13", with panoramic background, logo on first slide, markdown captions with per-slide highlights, bezel chrome, bundled Inter font for proper bold/italic:
+A recipes app, 6.9" + iPad Pro 13", with panoramic background, wordmark image on first slide, markdown captions with per-slide highlights, bezel chrome, bundled Inter font for proper bold/italic:
 
 ```yaml
 project: Recipes.xcodeproj
@@ -463,11 +549,12 @@ render:
       top_opacity: 0.0
       bottom_opacity: 0.45
 
-  logo:
-    path: ./marketing/logo-wordmark.svg
-    placement: first_only
-    max_height_pct: 6
-    top_padding_pct: 3
+  images:
+    - path: ./marketing/logo-wordmark.svg
+      position: above_title
+      align: center
+      max_height_pct: 6
+      placement: first_only
 
   caption:
     title:

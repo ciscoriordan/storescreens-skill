@@ -436,7 +436,7 @@ Screenshot names are the meaningful identifier only (`Home`, `Detail`, `Search`)
 
 ## Step 9: Render captioned, framed screenshots (optional)
 
-Raw captures from Step 8 are functional but plain - just the app UI with no marketing chrome. The render pipeline turns them into framed, captioned images ready to upload to App Store Connect: background, device bezel, logo, marketing captions with markdown, per-slide highlights.
+Raw captures from Step 8 are functional but plain - just the app UI with no marketing chrome. The render pipeline turns them into framed, captioned images ready to upload to App Store Connect: background, device bezel, images (logos, badges), laurel award overlays, marketing captions with markdown, per-slide highlights.
 
 **When to offer this:** any time the user wants App Store Connect-ready screenshots with captions or device frames. The render is opt-in (off by default) but most users want it before shipping.
 
@@ -449,7 +449,7 @@ Before touching YAML, ask the user:
 1. **What's the hero story?** Typically the first 2-3 slides in App Store Connect do 90% of the conversion work. What's the single most important thing to communicate? Often this becomes slide 1's title.
 2. **What's the slide order?** Get a numbered list. This list goes verbatim into the top-level `screenshots:` key in `storescreens.yml` - the render pipeline walks it in this exact order (no alphabetical reordering anywhere).
 3. **Bezels or no bezels?** `chrome.style: bezel` is the polished App Store look but needs bezel DMGs from Apple Design Resources. `chrome.style: stroke` looks clean, has zero external assets, and is a fine default while iterating.
-4. **Light, dark, or both?** Most render fields (`background.image`, `background.color`, `logo.path`) accept `{ light:, dark: }` variants.
+4. **Light, dark, or both?** Most render fields (`background.image`, `background.color`, `images[].path`, `laurels[].color`) accept `{ light:, dark: }` variants.
 5. **Any brand fonts?** Four tiers available: `system` (SF Pro), installed family name, local `.otf`/`.ttf` path, `{ google: "Inter" }` (auto-downloaded), or `{ regular:, bold:, italic:, bold_italic: }` bundle for correct markdown bold/italic.
 
 ### 9b. Write the screenshots list
@@ -464,7 +464,7 @@ screenshots:
   # ...
 ```
 
-This list is the single source of truth for display order. It drives capture filtering, render order, HTML preview order, and mtime stamping on the output PNGs (first in list = most recent mtime, so `ls -t` and Finder's "Date Created" both match). A panoramic background's left edge pins to the first entry here. `logo.placement: first_only` puts the logo on the first entry here.
+This list is the single source of truth for display order. It drives capture filtering, render order, HTML preview order, and mtime stamping on the output PNGs (first in list = most recent mtime, so `ls -t` and Finder's "Date Created" both match). A panoramic background's left edge pins to the first entry here. An image with `placement: first_only` (also the default for `above_title`) draws on the first entry here.
 
 ### 9c. Install bezels (only if using `chrome.style: bezel`)
 
@@ -559,15 +559,33 @@ Add a scrim to tame a busy background image:
     #   bottom_opacity: 0.6
 ```
 
-Add a logo (drawn above the screenshot):
+Add image overlays (logos, badges - up to 2 per slide, dropped near the caption block):
 
 ```yaml
-  logo:
-    path: ./marketing/logo-wordmark.svg
-    placement: first_only    # first_only | all | none
-    max_height_pct: 6
-    top_padding_pct: 3
+  images:
+    - path: ./marketing/logo-wordmark.svg
+      position: above_title    # above_title | below_title | above_subtitle | below_subtitle
+      align: center            # left | center (default) | right
+      max_height_pct: 6        # % of canvas height; default 8
+      placement: first_only    # first_only | all | none
 ```
+
+`position` defaults to `above_title` (matches the legacy logo placement). `placement` defaults to `first_only` for `above_title` and `all` for every other slot. Two entries in the same slot stack horizontally if they share an `align`, or place independently if they don't.
+
+Optionally add laurel "award badge" overlays - left/right laurel SVGs around centered title/subtitle text:
+
+```yaml
+  laurels:
+    - title: "Editors' Choice"
+      subtitle: "App Store"
+      color: "#FFD66B"
+      position: below_subtitle
+      max_height_pct: 11
+```
+
+`title` is bold by default and `subtitle` is regular; override with `title_style:` / `subtitle_style:` which accept the same fields as `caption.title`. Up to 2 per slide, same slot rules as `images`.
+
+Backwards compatibility: the legacy `logo:` block (single path + placement) still renders, treated as a single image at `above_title`. New configs should prefer `images:`. Setting `images: []` explicitly suppresses the legacy fallback.
 
 Add captions. Each role (`title`, `subtitle`) is optional. `min_font_size_pct` lets the renderer auto-shrink a long title to fit before it wraps:
 
@@ -1140,7 +1158,7 @@ Most apps do **not** need this - leave it unset (default: off).
 ## References
 
 - Full capture config schema: `references/config-reference.md`
-- Full render config schema (background, scrim, logo, caption, chrome, bezels, panoramic, markdown, highlights, fonts): `references/render-reference.md`
+- Full render config schema (background, scrim, images, laurels, caption, chrome, bezels, panoramic, markdown, highlights, fonts): `references/render-reference.md`
 - Full App Store Connect upload schema (`app_store_connect:` block, credentials, metadata files, `submit` flags, destructive semantics, troubleshooting): `references/submit-reference.md`
 - Full archive + binary upload schema (`upload_build:` block, non-beta Xcode auto-selection, ExportOptions.plist generation, altool flow, troubleshooting): `references/upload-build-reference.md`
 - ScreenshotTests starter template: `../storescreens-cli/Sources/storescreens-cli/Resources/ScreenshotTests.swift.template`
