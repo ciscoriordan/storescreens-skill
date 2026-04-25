@@ -205,7 +205,57 @@ laurels:
 | `nudge.x_pct` / `nudge.y_pct` | `0` | Same semantics as `images[].nudge`. Shifts the entire laurel + text block. |
 | `inset_pct` | `4` | Percent of laurel block height. Positive shifts the left laurel right and the right laurel left, tightening the badge. Negative pushes them outward. The text region stays put, so the laurel branches can encroach on text edges; usually safe given the laurel's open bow shape. |
 
-Up to 2 laurels per slide. Slot distribution follows the same rules as `images`: a single laurel respects its `align`, two laurels in the same slot auto-distribute at canvas thirds regardless of `align`.
+Up to 2 laurels per slide. Slot distribution follows the same rules as `images`: a single laurel respects its `align`, two laurels in the same slot auto-distribute with equal whitespace.
+
+## tables
+
+A 2D grid of text cells with optional borders. Same overlay slot semantics as `images` and `laurels` — up to two per slide, auto-distributed with equal whitespace when paired.
+
+```yaml
+tables:
+  - rows:
+      - ["5,064",     "Verbs"]
+      - ["2x more",   "than competitors"]
+    text_color: "#FFFFFF"
+    border_color: "#FFD66B"
+    cell_style:
+      font: system
+      weight: bold
+      align: center
+    border:
+      enabled: true                  # default
+      width_pct: 0.15                # default; % of canvas height
+      sides: [outer, inner]          # default; or [outer], [inner], or per-side: [top, bottom, left, right]
+    cell_padding_pct: 1              # default; % of canvas height
+    position: below_subtitle
+    align: center
+    max_height_pct: 14
+    placement: all
+    nudge: { x_pct: 0, y_pct: 0 }
+```
+
+Use `columns:` instead of `rows:` to supply column-major content; the renderer transposes internally. Rows of unequal length are padded with empty cells at the end so the grid is always rectangular.
+
+### Fields
+
+| Field | Default | Notes |
+|---|---|---|
+| `rows` | required if `columns` is unset | Row-major content. Each row is an array of cell strings. Markdown is supported per cell. |
+| `columns` | optional | Column-major alternative to `rows`. Used only when `rows` is nil. |
+| `text_color` | `#FFFFFF` | Cell text color. Hex string or `{ light:, dark: }`. |
+| `border_color` | `#FFFFFF` | Border color. Independent from `text_color`. |
+| `cell_style` | bold + `text_color` + center align | Same fields as `caption.title`. When `font_size_pct` is omitted, the renderer auto-derives one size that fits inside `max_height_pct / row_count` and applies it to every cell uniformly. |
+| `border.enabled` | `true` | Set `false` to draw text-only with no lines. |
+| `border.width_pct` | `0.15` | Percent of canvas height. |
+| `border.sides` | `[outer, inner]` | List of which lines to draw. `outer` expands to the four outer edges; `inner` to grid lines between cells. Per-side names (`top`, `bottom`, `left`, `right`) override slices of `outer`. |
+| `cell_padding_pct` | `1` | Interior padding around each cell, percent of canvas height. |
+| `position` | `below_subtitle` | Same slot values as `images` / `laurels`. |
+| `align` | `center` | Horizontal alignment of the whole table within its slot. |
+| `max_height_pct` | `14` | Block height of the table, percent of canvas height. Width is content-driven (sum of column widths + borders). |
+| `placement` | `all` | Per-slide visibility. Same semantics as `images` / `laurels`. |
+| `nudge.x_pct` / `nudge.y_pct` | `0` | Same semantics as elsewhere. |
+
+Up to 2 tables per slide. Slot distribution follows the same rules as `images` and `laurels`.
 
 ## logo
 
