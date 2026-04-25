@@ -151,14 +151,13 @@ images:
 | `placement` | `first_only` for `above_title`, `all` otherwise | Per-slide visibility. `first_only` draws on slide 1 only; `all` on every slide; `none` disables. |
 | `nudge.x_pct` / `nudge.y_pct` | `0` | Canvas-percentage offset applied after slot placement. Positive x = right; positive y = up. |
 
-### Stacking and conflict resolution
+### Stacking and distribution
 
 Up to 2 entries may share a slot. The renderer caps at 2 (extras are dropped with a warning).
 
-When two items land in the same slot:
-
-- Same `align`: stacked horizontally as a single group, then aligned together inside the slot.
-- Different `align`: each item placed independently at its own align (may overlap if the slot is too narrow to fit both).
+- 1 item: respects its `align` (or center by default), centered vertically in the slot, then any `nudge` is applied.
+- 2 items: auto-distribute with equal whitespace. The gaps from canvas-left to item₁, between item₁ and item₂, and from item₂ to canvas-right are all equal: `gap = (canvas_width - sum_of_item_widths) / 3`. With identically-sized items their centers land symmetrically; with different-sized items the larger one's center sits closer to its outer edge (still equal-gap layout). Items never overlap as long as they fit on the canvas. The `align` field controls each item's own internal text alignment (e.g. laurel title alignment) but does not affect anchoring in the slot. Use `nudge.x_pct` to fine-tune.
+- 2 items wider than the canvas: items are clamped to abut at the midline (still no overlap of each other) and a warning is emitted. Lower `max_height_pct` to fit.
 
 Stacking order follows config order (images before laurels when they share a slot).
 
@@ -178,6 +177,7 @@ laurels:
     nudge:
       x_pct: 0
       y_pct: 0
+    inset_pct: 4                     # default; positive = laurels closer, may overlap text
     title_style:                     # optional; same fields as caption.title
       font: system
       weight: bold
@@ -195,16 +195,17 @@ laurels:
 |---|---|---|
 | `title` | optional | Top text between the laurels. Bold by default. Accepts a string or array of strings (strict line breaks); markdown supported. |
 | `subtitle` | optional | Bottom text between the laurels. Regular by default. Same shapes as `title`. |
-| `title_style` | inherits from `color` and bold default | Same fields as `caption.title` (font, weight, italic, font_size_pct, color, align). When `font_size_pct` is omitted, the title scales to roughly 30 percent of the laurel block height. |
-| `subtitle_style` | inherits from `color` and regular default | Same fields as `caption.subtitle`. When `font_size_pct` is omitted, the subtitle scales to roughly 18 percent of the laurel block height. |
+| `title_style` | inherits from `color` and bold default | Same fields as `caption.title` (font, weight, italic, font_size_pct, color, align). When `font_size_pct` is omitted, both title and subtitle share a single auto-derived size of about 27 percent of the laurel block height, so the two lines read as balanced typography rather than headline + footnote. The bold default still gives the title visual hierarchy. |
+| `subtitle_style` | inherits from `color` and regular default | Same fields as `caption.subtitle`. When `font_size_pct` is omitted, the subtitle defaults to the same auto-derived size as `title_style`. Setting `font_size_pct` on either side breaks the link and uses the explicit value. |
 | `color` | `#FFFFFF` | Laurel tint, applied as an alpha-mask fill. Single hex or `{ light:, dark: }`. Also supplies the default text color when `title_style.color` / `subtitle_style.color` are unset. |
 | `position` | `below_subtitle` | Same slot values as `images`. |
 | `align` | `center` | Horizontal alignment of the whole laurel block within its slot. |
 | `max_height_pct` | `10` | Block height (laurel + text) as a percentage of canvas height. |
 | `placement` | `all` | Per-slide visibility. Laurels usually want to repeat; default differs from images. |
-| `nudge.x_pct` / `nudge.y_pct` | `0` | Same semantics as `images[].nudge`. |
+| `nudge.x_pct` / `nudge.y_pct` | `0` | Same semantics as `images[].nudge`. Shifts the entire laurel + text block. |
+| `inset_pct` | `4` | Percent of laurel block height. Positive shifts the left laurel right and the right laurel left, tightening the badge. Negative pushes them outward. The text region stays put, so the laurel branches can encroach on text edges; usually safe given the laurel's open bow shape. |
 
-Up to 2 laurels per slide. Slot stacking follows the same same-align/different-align rules as `images`.
+Up to 2 laurels per slide. Slot distribution follows the same rules as `images`: a single laurel respects its `align`, two laurels in the same slot auto-distribute at canvas thirds regardless of `align`.
 
 ## logo
 
