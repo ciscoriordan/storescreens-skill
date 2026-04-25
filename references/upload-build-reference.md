@@ -59,6 +59,22 @@ app_store_connect:
 | `auto_bump` | bool | `true` | When the resolver decides the current `MARKETING_VERSION` / `CURRENT_PROJECT_VERSION` won't work (already shipped, or build number collides with TestFlight): rewrite the pbxproj in place (and sync `submit.create_version` in the yml). Set to `false` to error out instead and print the `agvtool` commands to run manually. |
 | `marketing_version` | string | - | Force a specific marketing version. Bypasses the "is it shipped?" check but still validates build number against existing TestFlight builds. |
 | `build_number` | string | - | Force a specific build number. Bypasses the collision check. |
+| `export_compliance` | enum | `none` | Bakes `ITSAppUsesNonExemptEncryption` into the Info.plist at archive time so the build doesn't show "Missing Compliance" in TestFlight / App Store. See [Export compliance](#export-compliance) below. |
+
+## Export compliance
+
+Apple requires every TestFlight / App Store build to declare whether it uses non-exempt encryption. Without an answer, the build sits in "Missing Compliance" and can't be released.
+
+`upload-build` defaults to answering "no non-exempt algorithms" (the right answer for the vast majority of apps using only HTTPS / keychain / signing). The answer is baked into the archived Info.plist via the `INFOPLIST_KEY_ITSAppUsesNonExemptEncryption` build setting at archive time.
+
+| Value | Maps to | Use when |
+|-------|---------|----------|
+| `none` (default) | `ITSAppUsesNonExemptEncryption=NO` | App uses only standard iOS cryptography (HTTPS, keychain, signing). Correct for almost every app. |
+| `exempt_algorithms` | `ITSAppUsesNonExemptEncryption=NO` | App ships its own crypto but it qualifies for an Apple exemption (authentication, DRM, copy protection, IP rights management). To also set `ITSEncryptionExportComplianceCode`, add it to your Info.plist directly; this field doesn't manage that. |
+| `non_exempt` | `ITSAppUsesNonExemptEncryption=YES` | App uses non-exempt encryption. Requires the BIS export paperwork separately. |
+| `skip` | (key not set) | Don't touch the Info.plist key. Build will show "Missing Compliance" until answered manually or via `storescreens submit` (the `submit.export_compliance` field PATCHes it via the ASC API after upload). |
+
+Caveat: this build setting only takes effect for projects that opt into Xcode's auto-generated Info.plist (`GENERATE_INFOPLIST_FILE = YES`, the default in Xcode 13+ projects). For legacy projects with a hand-written Info.plist file, set `ITSAppUsesNonExemptEncryption` in the file directly; the build setting is ignored in that case.
 
 ## Automatic version + build resolution
 
