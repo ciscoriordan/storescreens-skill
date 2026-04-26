@@ -25,6 +25,11 @@ devices:
   #       - testLandscapePolytonic
 
 # Appearances - light, dark (default: light only)
+# - One entry: every slide captures in that appearance, output is flat.
+# - Two entries: legacy multiplier - every slide captures in BOTH and
+#   the output uses light/ + dark/ subfolders.
+# - Per-slide override (see render.slides[name].appearance) wins for
+#   that slide and switches the output to a flat layout (no subfolders).
 appearances:
   - light
   # - dark
@@ -83,6 +88,10 @@ test_class: ScreenshotTests
 #     min_height_pct: 22
 #   slides:
 #     "Home": { caption: "Your recipes, organized." }
+#     # appearance: dark on a slide captures + renders only this slide in
+#     # dark, even if the top-level appearances: list is just [light].
+#     # Activates flat output layout (no light/ + dark/ subfolders).
+#     "DarkOnlySlide": { appearance: dark }
 
 # Upload rendered screenshots + per-locale metadata to App Store Connect
 # via `storescreens submit`. Credentials come from env vars (ASC_KEY_ID,
