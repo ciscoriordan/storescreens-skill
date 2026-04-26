@@ -249,6 +249,8 @@ Cell content can include `\n` for in-cell line breaks; the row containing the mu
 | `border_color` | `#FFFFFF` | Border color. Independent from `text_color`. |
 | `cell_style` | bold + `text_color` + center align | Same fields as `caption.title`. When `font_size_pct` is omitted, the renderer auto-derives one size that fits inside `max_height_pct` divided across the total number of text lines (so a row containing a 2-line cell takes twice the height of a 1-line row). |
 | `column_aligns` | inherits from `cell_style.align` | Per-column horizontal alignment override. e.g. `[left, right]` for a 2-column table left-aligns column 0 and right-aligns column 1. Cells without an entry inherit `cell_style.align` (default center). |
+| `column_valigns` | inherits from `cell_style.vertical_align` | Per-column vertical alignment override. `top` / `center` (default) / `bottom`. Useful when one row auto-grows for a multi-line cell and you want its single-line neighbors to top-align with that cell's first line: `column_valigns: [top, top]`. |
+| `cell_style.vertical_align` | `center` | Default vertical alignment for cells; `column_valigns[c]` overrides per-column. |
 | `border.enabled` | `true` | Set `false` to draw text-only with no lines. |
 | `border.width_pct` | `0.15` | Percent of canvas height. |
 | `border.sides` | `[outer, inner]` | List of which lines to draw. `outer` expands to the four outer edges; `inner` to grid lines between cells. Per-side names (`top`, `bottom`, `left`, `right`) override slices of `outer`. |
