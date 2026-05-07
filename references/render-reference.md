@@ -151,6 +151,14 @@ images:
 | `placement` | `first_only` for `above_title`, `all` otherwise | Per-slide visibility. `first_only` draws on slide 1 only; `all` on every slide; `none` disables. |
 | `nudge.x_pct` / `nudge.y_pct` | `0` | Canvas-percentage offset applied after slot placement. Positive x = right; positive y = up. |
 
+### Above_title slot is anchored to the caption block
+
+When a caption is present, the `above_title` slot extends from the canvas top down to just above the caption block (separated by `caption.spacing_pct`). The image is centered in this slot, which gives roughly equal "canvas top -> image" and "image -> caption" gaps automatically. When `caption.nudge` or `caption.vertical_align` shifts the caption, the slot follows so image + caption read as a single visual unit.
+
+When there is no caption text, the slot collapses to the legacy canvas-top band sized to the image, so middle-slot-only configs keep their old layout.
+
+This is a behaviour change in 2.8.0. Pre-2.8 configs that used `images[].nudge.y_pct` to manually pull the logo down toward the caption can drop the nudge; the default already balances the gaps. To restore the old "logo glued to canvas top" look, set a positive `nudge.y_pct` to push the image back up.
+
 ### Stacking and distribution
 
 Up to 2 entries may share a slot. The renderer caps at 2 (extras are dropped with a warning).
@@ -313,7 +321,7 @@ caption:
 
   spacing_pct: 1.0            # vertical gap between title and subtitle (% of canvas height)
   min_height_pct: 22          # reserves at least this much vertical space above the screenshot
-  padding_pct: 5              # horizontal inset for the whole caption block
+  padding_pct: 5              # horizontal (left+right) inset for the whole caption block
 
   vertical_align: center      # top | center (default) | bottom — where the block sits in its band
   nudge:                      # fine-tune offset applied after vertical_align
@@ -321,7 +329,15 @@ caption:
     y_pct: 0                  # positive = up, negative = down
 ```
 
-`min_font_size_pct` matters because captions auto-shrink to fit - if the title is long, the renderer steps the point size down until it either fits on one line or hits this floor (then wraps).
+`vertical_align` defaults to `center` whether the field is present or absent: same value, same render. If a centered caption looks shifted toward the device anyway, that's the `chrome.padding_pct` inset (default 4%) sitting between the band's bottom and the visible bezel; centering is computed against the visible bezel top, but the inset still adds a small offset to the *apparent* gap below the caption. Lower `chrome.padding_pct` to tighten.
+
+`padding_pct` is a horizontal inset only (left + right). There is no vertical analogue; use `min_height_pct` to enlarge the band, `vertical_align` to choose where the block sits inside it, and `nudge.y_pct` for fine-tuned offset.
+
+`min_font_size_pct` matters because captions auto-shrink to fit. The renderer steps the point size down between `font_size_pct` and `min_font_size_pct` until the lines fit `min_height_pct`. If you set `font_size_pct == min_font_size_pct` to lock a uniform size across slides, three things happen at the floor:
+
+- Wrapped lines fit vertically inside `min_height_pct`: rendered normally, no warning.
+- Wrapped lines exceed `min_height_pct`: the caption band grows to the natural height and the device chrome shifts down to make room. A warning surfaces telling you to raise `min_height_pct` or shorten the text if you want a uniform device anchor across slides. (When `chrome.device_height_pct` is set the band is canonical and stays clamped: the warning fires but the layout is preserved.)
+- A single strict-array line (or a word) is wider than `blockWidth = canvas - 2 * padding_pct`: the line renders with horizontal overflow, centered in the canvas, with a warning. Pre-2.8 this collapsed the whole caption to a single ellipsized line.
 
 `align`, `vertical_align`, and `nudge` are independent:
 
