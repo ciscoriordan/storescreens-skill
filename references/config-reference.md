@@ -202,6 +202,31 @@ app_store_connect:
     screenshots: true
     metadata: true
     submit_for_review: false      # default false; true auto-submits for App Review
+
+  # Optional - all three are app-info / version metadata that lives in
+  # App Store Connect outside of the per-locale .txt files. submit reads
+  # current values, diffs against the YAML, and only PATCHes when
+  # something differs. Full schema in submit-reference.md.
+
+  categories:                       # PATCH /v1/appInfos/{id} relationships
+    primary: EDUCATION
+    secondary: REFERENCE
+
+  age_rating:                       # PATCH /v1/ageRatingDeclarations/{id}
+    cartoon_or_fantasy_violence: NONE
+    realistic_violence: NONE
+    profanity_or_crude_humor: NONE
+    gambling: false
+    unrestricted_web_access: false
+    kids_age_band: NONE
+
+  review_info:                      # POST/PATCH /v1/appStoreReviewDetails
+    first_name: Jane
+    last_name: Doe
+    phone_number: "+1 555 123 4567"
+    email_address: jane@example.com
+    notes: |
+      Plain-text notes for Apple's reviewers.
 ```
 
 Related commands: `storescreens auth login`, `storescreens auth status`, `storescreens auth logout`, `storescreens submit [--dry-run] [--skip-screenshots] [--skip-metadata] [--version-override X.Y.Z]`.

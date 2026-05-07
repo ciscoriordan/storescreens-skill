@@ -34,6 +34,9 @@ app_store_connect:
 | `submit` | object | - | Upload behaviour. See below. |
 | `pricing` | object | - | App-level pricing. Optional; unset leaves the existing schedule untouched. Today only free pricing is implemented. See "`pricing:` fields" below. |
 | `availability` | object | - | Territory availability. Optional; unset leaves current availability untouched. See "`availability:` fields" below. |
+| `categories` | object | - | Primary + secondary App Store categories (and optional subcategories). Optional; unset leaves existing categories untouched. See "`categories:` fields" below. |
+| `age_rating` | object | - | Age-rating questionnaire answers. Optional; unset leaves the existing declaration untouched. See "`age_rating:` fields" below. |
+| `review_info` | object | - | App Review Information panel (notes, contact, demo account). Optional; YAML alternative to per-locale `review_*.txt` files - either flow ends up at the same `appStoreReviewDetails` resource. See "`review_info:` fields" below. |
 
 ## `submit:` fields
 
@@ -76,6 +79,111 @@ app_store_connect:
 |-------|------|---------|-------|
 | `territories` | `"all"` or list of ISO 3166-1 alpha-3 codes | - | `all` resolves to every territory Apple supports at submit time (expanded via `GET /v1/territories`). A list limits availability to the specified territories only. Unset skips the availability step entirely. |
 | `available_in_new_territories` | bool | `true` | When Apple adds a new territory to the App Store, auto-enroll the app. Matches ASC's own default. |
+
+## App Info & version metadata
+
+The next three blocks (`categories:`, `age_rating:`, `review_info:`) cover the rest of what the App Store Connect web UI calls "App Information" plus the "App Review Information" panel. Each is optional and idempotent: `submit` reads the current values from ASC, diffs against the YAML, and only PATCHes when something differs.
+
+`categories:` and `age_rating:` live on the editable AppInfo (the same record that hosts name/subtitle/privacy URLs), so they require an editable AppInfo state - typically `PREPARE_FOR_SUBMISSION`. When the only AppInfo is `READY_FOR_SALE`, the orchestrator skips with `skipped: no editable appInfo` (same skip-reason path as name/subtitle).
+
+`review_info:` lives on the version's `appStoreReviewDetails` resource and works on any editable version.
+
+## `categories:` fields
+
+```yaml
+app_store_connect:
+  categories:
+    primary: EDUCATION
+    secondary: REFERENCE
+    # optional sub-slots:
+    # primary_subcategory_one: ...
+    # primary_subcategory_two: ...
+    # secondary_subcategory_one: ...
+    # secondary_subcategory_two: ...
+```
+
+| Field | Type | Default | Notes |
+|-------|------|---------|-------|
+| `primary` | string | - | Primary App Store category ID (uppercase, e.g. `EDUCATION`, `PHOTO_AND_VIDEO`). Required when assigning categories for the first time; optional on re-runs. |
+| `secondary` | string | - | Secondary category ID. Pass the literal string `"none"` to explicitly clear the slot. Optional. |
+| `primary_subcategory_one` / `primary_subcategory_two` | string | - | Optional first/second subcategory under the primary category. Mostly used by `GAMES` (e.g. `GAMES_ACTION`, `GAMES_ADVENTURE`). |
+| `secondary_subcategory_one` / `secondary_subcategory_two` | string | - | Same shape as the primary subcategory slots, but under `secondary`. |
+
+`storescreens submit --dry-run` validates every supplied id against `GET /v1/appCategories` so a typo fails before the live PATCH. Unknown categories produce errors like `categories.primary = "EDUKATION" is not a known ASC category id (try one of: BOOKS, BUSINESS, DEVELOPER_TOOLS, EDUCATION, ENTERTAINMENT, …)`.
+
+API endpoint: `PATCH /v1/appInfos/{id}` with all six relationships in a single body. Apple's separate relationship-only endpoints (e.g. `PATCH /v1/appInfos/{id}/relationships/primaryCategory`) return 403 `FORBIDDEN_ERROR` "does not allow UPDATE" - the parent PATCH is the only programmatic path that works.
+
+## `age_rating:` fields
+
+The age-rating questionnaire that determines the 4+/9+/12+/17+ badge on the App Store. Each editable AppInfo has exactly one auto-created `ageRatingDeclaration` child; `submit` PATCHes that record with whatever subset of fields you specify in YAML.
+
+```yaml
+app_store_connect:
+  age_rating:
+    # Frequencies: NONE | INFREQUENT_OR_MILD | FREQUENT_OR_INTENSE
+    cartoon_or_fantasy_violence: NONE
+    realistic_violence: NONE
+    prolonged_graphic_sadistic_realistic_violence: NONE
+    profanity_or_crude_humor: NONE
+    mature_or_suggestive_themes: NONE
+    horror_or_fear_themes: NONE
+    medical_or_treatment_information: NONE
+    alcohol_tobacco_or_drug_use_or_references: NONE
+    simulated_gambling: NONE
+    sexual_content_or_nudity: NONE
+    graphic_sexual_content_and_nudity: NONE
+    contests: NONE
+    # Booleans
+    unrestricted_web_access: false
+    gambling: false
+    # Other
+    kids_age_band: NONE       # NONE | FIVE_AND_UNDER | SIX_TO_EIGHT | NINE_TO_ELEVEN
+    # age_rating_override: NONE_OF_THE_ABOVE  # rarely used
+```
+
+| Field type | Allowed values | Notes |
+|------------|----------------|-------|
+| Frequency fields | `NONE`, `INFREQUENT_OR_MILD`, `FREQUENT_OR_INTENSE` | Each defaults to `NONE` server-side; specify only what your app actually contains. |
+| `unrestricted_web_access` | `true` / `false` | Set to `true` when the app embeds a general-purpose browser. |
+| `gambling` | `true` / `false` | Real-money gambling. (Simulated/play-money gambling uses `simulated_gambling` instead.) |
+| `kids_age_band` | `NONE` / `FIVE_AND_UNDER` / `SIX_TO_EIGHT` / `NINE_TO_ELEVEN` | Required for apps in the Kids category; defaults to `NONE` for everything else. |
+| `age_rating_override` | string | Rarely needed. Apple's docs list the valid override values; leave unset for normal apps. |
+
+API endpoint: `PATCH /v1/ageRatingDeclarations/{id}`, where `{id}` is fetched once via `GET /v1/appInfos/{appInfoID}/ageRatingDeclaration`. ASC computes the final rating (4+, 9+, 12+, 17+) from the answers automatically; you don't set the rating directly.
+
+If every YAML field already matches the ASC declaration, `submit` skips the PATCH entirely and reports `age rating: unchanged`. ASC rejects PATCHes with no changed attributes, so the pre-diff isn't optional.
+
+## `review_info:` fields
+
+The "App Review Information" panel the reviewer sees while triaging your build: a free-form notes field plus contact info plus an optional demo login. This is an alternative to the per-locale `review_*.txt` files - either flow ends up at the same `appStoreReviewDetails` resource. When both YAML and files are present, YAML wins on a per-field basis.
+
+```yaml
+app_store_connect:
+  review_info:
+    first_name: Jane
+    last_name: Doe
+    phone_number: "+1 555 123 4567"
+    email_address: jane@example.com
+    demo_account_required: false  # default: auto-derived from demo_account_*
+    demo_account_name: tester@example.com
+    demo_account_password: hunter2
+    notes: |
+      Plain-text notes for Apple's reviewers. Multi-line YAML strings
+      work fine here; trailing whitespace is trimmed at PATCH time.
+```
+
+| Field | Type | Default | Notes |
+|-------|------|---------|-------|
+| `first_name` | string | - | Reviewer-facing contact first name. |
+| `last_name` | string | - | Reviewer-facing contact last name. |
+| `phone_number` | string | - | Phone number Apple uses if they need to reach the developer during review. |
+| `email_address` | string | - | Email address for the same purpose. |
+| `demo_account_required` | bool | auto | Whether Apple needs a demo login. Defaults to `true` when `demo_account_name` or `demo_account_password` is set; `false` otherwise. Set explicitly to override. |
+| `demo_account_name` | string | - | Demo account username/email. Optional. |
+| `demo_account_password` | string | - | Demo account password. Required when `demo_account_name` is set. |
+| `notes` | string | - | Free-form notes. Multi-line via YAML pipe literal (`notes: \|`). Up to 4000 characters. |
+
+API endpoint: `appStoreReviewDetails` (POST when one doesn't exist on the version yet, PATCH when it does). Diffed before write; unchanged values produce a `review detail: unchanged` log line and no API call.
 
 ## Metadata directory layout
 
@@ -256,6 +364,9 @@ No writes happen. Use this as your pre-flight before a live submit.
 - **`app_store_connect.submit.create_version is required`** - set `submit.create_version` in the YAML or pass `--version-override`.
 - **Locale not appearing in the upload summary** - every `metadata/<locale>/` file was empty or unknown. Only supported filenames (`name.txt`, `subtitle.txt`, `description.txt`, `keywords.txt`, `promotional_text.txt`, `release_notes.txt`, `support_url.txt`, `marketing_url.txt`, `privacy_url.txt`) count; anything else is skipped with a warning.
 - **`release_notes.txt` is ignored on first submission** - App Store Connect rejects "What's New" text on a brand-new app's first version because release notes are semantically "what changed since the last release." `submit` detects this case by listing the app's versions and skips the `whatsNew` attribute in the PATCH, emitting a `skipping whatsNew (...)` progress line. The file is still read, just not sent this time; subsequent version submissions (after the app is live) will pick it up automatically.
+- **`categories: skipped: no editable appInfo`** - same root cause as the name/subtitle skip path: the only AppInfo on the app is in `READY_FOR_SALE` (the live store record). Categories live on the editable AppInfo, so they need a `PREPARE_FOR_SUBMISSION`-state AppInfo to PATCH onto. Bump `submit.create_version` to a fresh string so `submit` creates a new editable version (which auto-creates a fresh editable AppInfo) and re-run.
+- **`categories.<field> = "..." is not a known ASC category id`** - the supplied id doesn't match any value returned by `GET /v1/appCategories`. The dry-run prints the first five known ids as a hint. Common mistakes: lowercase (use `EDUCATION`, not `Education`), spaces (use `_`, e.g. `PHOTO_AND_VIDEO`), or guessing at the human label instead of the API id (it's `BOOKS`, not `BOOK`).
+- **Age-rating PATCH 422 with no detail** - usually means the YAML's frequency value is one Apple doesn't recognize. Valid values are `NONE`, `INFREQUENT_OR_MILD`, `FREQUENT_OR_INTENSE`. The Codable parser catches typos like `SOMETIMES` at YAML-load time, but if Apple changes the enum names server-side a previously-good YAML may start rejecting; check `developer.apple.com/documentation/appstoreconnectapi/age_rating_declaration` for the current list.
 
 ## Complete example
 
