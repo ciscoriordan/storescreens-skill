@@ -105,7 +105,7 @@ test_class: ScreenshotTests
 #     create_version: "1.2.0"
 #     screenshots: true
 #     metadata: true
-#     submit_for_review: false    # v1 always behaves as false; manual review submit
+#     submit_for_review: false    # default false; true auto-submits for review (auto-cancels stuck prior submissions)
 ```
 
 ## Device Names & App Store Connect Size Mapping
@@ -201,7 +201,7 @@ app_store_connect:
     create_version: "1.2.0"       # required
     screenshots: true
     metadata: true
-    submit_for_review: false      # v1 always behaves as false
+    submit_for_review: false      # default false; true auto-submits for App Review
 ```
 
 Related commands: `storescreens auth login`, `storescreens auth status`, `storescreens auth logout`, `storescreens submit [--dry-run] [--skip-screenshots] [--skip-metadata] [--version-override X.Y.Z]`.

@@ -42,7 +42,7 @@ app_store_connect:
 | `create_version` | string | - | **Required.** Target App Store version string (e.g. `1.2.0`). If the version doesn't exist in App Store Connect yet, it is created. Can be overridden on the CLI with `--version-override`. |
 | `screenshots` | bool | `true` | Upload rendered screenshots. Set to `false` for a metadata-only submit. Also controllable via `--skip-screenshots`. |
 | `metadata` | bool | `true` | Upload per-locale metadata. Set to `false` for a screenshots-only submit. Also controllable via `--skip-metadata`. |
-| `submit_for_review` | bool | `false` | When `true`, `submit` drives Apple's `reviewSubmissions` 3-step flow (create submission, attach the version as an item, submit) after screenshots and metadata have been uploaded successfully. The submission ID is included in the report output. Submission runs only after the uploads succeed, so the version is complete when Apple picks it up. Default is `false` because review submission is irreversible without reviewer intervention, so opt in explicitly when you are ready to ship. (Internal note: storescreens-cli previously used the older `appStoreVersionSubmissions` endpoint; the migration to `reviewSubmissions` is transparent to users - same YAML flag, same external behavior.) |
+| `submit_for_review` | bool | `false` | When `true`, `submit` drives Apple's `reviewSubmissions` 3-step flow (create submission, attach the version as an item, PATCH `submitted: true`) after screenshots and metadata have been uploaded successfully. The submission ID and final state (typically `WAITING_FOR_REVIEW`) are included in the report output. Submission runs only after the uploads succeed, so the version is complete when Apple picks it up. Before creating the new submission, `submit` cleans up any prior `UNRESOLVED_ISSUES` (rejected) or stale `READY_FOR_REVIEW` (aborted prior submit) submissions for the same app + platform by PATCHing `canceled: true` and polling until they settle to `COMPLETE`. If a prior submission is in `IN_REVIEW` or `WAITING_FOR_REVIEW`, `submit` refuses to auto-cancel and surfaces a loud error so you can decide whether to cancel manually via the ASC web UI. Default is `false` because review submission is irreversible without reviewer intervention, so opt in explicitly when you are ready to ship. |
 | `platform` | string | `IOS` | ASC platform enum: `IOS`, `MAC_OS`, `TV_OS`, `VISION_OS`. Rarely needs override; derive from your app's actual platform. |
 
 ## `pricing:` fields
@@ -96,6 +96,13 @@ metadata/
     support_url.txt
     marketing_url.txt
     privacy_url.txt
+    review_notes.txt
+    review_contact_first_name.txt
+    review_contact_last_name.txt
+    review_contact_phone.txt
+    review_contact_email.txt
+    review_demo_account_name.txt
+    review_demo_account_password.txt
   es-ES/
     description.txt
     release_notes.txt
@@ -108,6 +115,8 @@ metadata/
 ```
 
 `privacy_url.txt` is optional. Unlike the other fields it patches the App Info localization (app-level) rather than the version localization, which is where App Store Connect keeps privacy URLs. The submit command routes it to the correct endpoint automatically, so no extra config is needed; just drop the file in the locale directory.
+
+`review_notes.txt` and the `review_contact_*.txt` / `review_demo_account_*.txt` files feed the version-level `appStoreReviewDetails` resource (the "App Review Information" panel in App Store Connect). They are version-scoped not locale-scoped on Apple's side, so put them under one locale only - typically your primary. If the same `review_*.txt` file shows up in multiple locale folders, the alphabetically-first one wins and `submit` warns about the rest.
 
 ### File -> App Store Connect field mapping
 
@@ -122,6 +131,13 @@ metadata/
 | `support_url.txt` | `supportURL` (version localization) | - | Must start with `http://` or `https://`. |
 | `marketing_url.txt` | `marketingURL` (version localization) | - | Optional marketing site. |
 | `privacy_url.txt` | `privacyPolicyUrl` (app info localization) | - | Optional privacy policy URL. Patched on the App Info localization (app level), not the version localization. Must start with `http://` or `https://`. |
+| `review_notes.txt` | `notes` (appStoreReviewDetail) | 4000 | Free-form notes for Apple's reviewers. Version-scoped, not per-locale - put in one locale only. |
+| `review_contact_first_name.txt` | `contactFirstName` (appStoreReviewDetail) | - | Reviewer contact info. |
+| `review_contact_last_name.txt` | `contactLastName` (appStoreReviewDetail) | - | Reviewer contact info. |
+| `review_contact_phone.txt` | `contactPhone` (appStoreReviewDetail) | - | Reviewer contact info. |
+| `review_contact_email.txt` | `contactEmail` (appStoreReviewDetail) | - | Reviewer contact info. |
+| `review_demo_account_name.txt` | `demoAccountName` (appStoreReviewDetail) | - | Optional demo login (when the app needs an account to be reviewed). |
+| `review_demo_account_password.txt` | `demoAccountPassword` (appStoreReviewDetail) | - | Optional demo login password. |
 
 Unknown filenames inside a locale directory are skipped with a warning. Dotfiles (`.DS_Store` etc.) are ignored.
 
