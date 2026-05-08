@@ -380,6 +380,50 @@ Disambiguation rules for bare strings:
 
 Use the `bundle` form when you want `**bold**` or `*italic*` markdown inside captions to render with the right face rather than letting Core Text synthesize them.
 
+### Per-locale font (and style) overrides
+
+A single typeface rarely covers every script you ship in. Add `locale_overrides:` to a caption role to swap the font (or any other style field) per locale without forking your config:
+
+```yaml
+caption:
+  title:
+    font:
+      google: "Cormorant Garamond"        # default for Latin scripts
+    weight: bold
+    color: "#ffffff"
+    locale_overrides:
+      el:
+        font: { google: "GFS Didot" }     # Greek slides use Didot
+      ja:
+        font: "Hiragino Mincho ProN"      # Japanese gets a CJK serif
+        weight: regular                   # …with a lighter weight
+```
+
+Each entry under `locale_overrides:` is itself a `CaptionRole` whose non-nil fields shadow the role's defaults. Locales not in the map render with the role unchanged, and a nil locale (e.g. legacy callers without locale awareness) always gets the defaults. Both `caption.title.locale_overrides` and `caption.subtitle.locale_overrides` are supported. Override values can use any `font:` shape (system, installed, path, bundle, Google Fonts).
+
+Common pairing: per-locale text overrides on a slide plus per-locale font on the role:
+
+```yaml
+caption:
+  title:
+    font: { google: "Cormorant Garamond" }
+    locale_overrides:
+      el: { font: { google: "GFS Didot" } }
+slides:
+  "Weather":
+    caption:
+      - "Two scales."
+      - "Always."
+    caption_locales:
+      el:
+        - "Δύο κλίμακες."
+        - "Πάντα."
+```
+
+The Greek render then uses GFS Didot to draw the Greek copy; every other locale keeps Cormorant Garamond.
+
+Slide-level `title_style:` overrides keep working alongside `locale_overrides:`. The merge order is: top-level role defaults, then slide-level `title_style:` (field by field), then `locale_overrides:` for the matched locale on the merged role (field by field). So a slide can pick its own color while the role still carries the per-locale font swap.
+
 ## Markdown in captions
 
 Basic inline markdown works in both `title:` and `subtitle:` strings (and inside array items):
