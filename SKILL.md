@@ -851,6 +851,16 @@ Reports per-locale metadata updates, per-(locale, display type) screenshot uploa
 
 Full schema, character limits, credential resolution order, destructive semantics, troubleshooting, and a complete working example: `references/submit-reference.md`.
 
+### 10j. Check on the submission
+
+After submit, you don't have to open the App Store Connect web UI to know whether Apple has started reviewing or accepted the build. `storescreens status` queries ASC and prints the current version states and any open review submission:
+
+```bash
+storescreens status
+```
+
+Read-only - no writes. Color-codes states (green = live / approved, yellow = in flight, red = rejected) and prints a one-line hint about the next action ("Apple is reviewing the submission.", "Apple rejected the submission. Resolve issues and resubmit.", etc.). Pass `--json` for machine-readable output; `--platform IOS|MAC_OS|TV_OS|VISION_OS` to switch platforms.
+
 ---
 
 ## Step 10b: Archive + upload the app binary (optional)
