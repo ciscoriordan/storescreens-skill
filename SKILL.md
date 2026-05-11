@@ -670,6 +670,29 @@ Full schema with every field, every enum value, and a complete real-world exampl
 
 ---
 
+## Full App Store Connect API coverage (v2.12.0+)
+
+Beyond the screenshot + metadata + build-upload workflow, storescreens-cli wraps the full App Store Connect API across seven resource families as both CLI subcommands and MCP tools, sharing the same `~/.storescreens/asc-credentials.yml` credentials. If the user asks for anything App Store related and the operation isn't covered by `submit` / `upload-build` / `status`, check whether one of these families already handles it before reaching for raw `curl` or unaffiliated tooling:
+
+| Family | CLI prefix | MCP tool prefix | What's in it |
+|---|---|---|---|
+| TestFlight | `storescreens testflight ...` | `testflight_*` | Beta groups, beta testers, invitations, prerelease versions, builds, build-beta-detail, build-beta-notifications, beta-app/build-localizations, beta-app-review, beta-license-agreement, beta-tester-metrics, build-bundles, build-icons |
+| In-App Purchases (V2) | `storescreens iap ...` | `iap_*` | One-time IAPs: products, localizations, price points + schedules, submissions, content-hosting, images, review-screenshots, promotional-images, promoted-purchases |
+| Subscriptions | `storescreens subscriptions ...` | `subs_*` | Auto-renewing subs: groups, group-localizations, subscriptions, localizations, prices + price-points, offer-codes (one-time + custom + prices), promotional-offers (+ prices), availability, submissions, review-screenshots, images |
+| Customer Reviews | `storescreens reviews ...` | `reviews_*` | List with rich filters (territory / rating / answered / edited), get one, post / update / delete the developer's response, list-unanswered helper |
+| Reports | `storescreens reports ...` | `reports_*` | Sales reports (TSV), finance reports (CSV), analytics requests + reports + instances + segments, perf-power metrics, diagnostic signatures |
+| Users + Developer Portal | `storescreens users ...` / `storescreens devportal ...` | `users_*` / `devportal_*` | Team users, invitations, user-visible-apps; certificates, profiles, devices, bundle-ids + capabilities |
+| Marketing surfaces | `storescreens previews`, `storescreens app-clips`, `storescreens cpp`, `storescreens events`, `storescreens experiments`, `storescreens encryption-decl`, `storescreens routing-coverage` | `preview_*`, `app_clip*`, `cpp_*`, `events_*`, `experiments_*`, `encryption_decl_*`, `routing_coverage_*` | App Previews (videos), App Clips (+ experiences + headers), Custom Product Pages, in-app App Events, App Store Version Experiments V2 (A/B), App Encryption Declarations, Routing App Coverage |
+
+Discovery:
+- MCP: call `tools/list` and grep tool names for the prefix above.
+- CLI: `storescreens <family> --help` shows every subcommand and flag.
+- Full docs with examples and YAML/JSON output: see the "App Store Connect API coverage" section in storescreens-cli's README.
+
+When the user describes an ASC operation, prefer the storescreens MCP tool or CLI subcommand over Bash + curl + JWT minting. The credentials, JWT handling, retries, pagination, and JSON:API quirks are already taken care of.
+
+---
+
 ## Step 10: Upload to App Store Connect (optional)
 
 Once the user is happy with the rendered output from Step 9, they can push everything (screenshots + per-locale metadata like description, what's new, keywords, etc.) straight to App Store Connect via Apple's official API.
