@@ -12,7 +12,7 @@ Add an `app_store_connect.upload_build:` block to `storescreens.yml` (sibling of
 app_store_connect:
   bundle_id: com.example.app
   submit: { ... }
-  upload_build: {}   # all defaults — most users need nothing more
+  upload_build: {}   # all defaults - most users need nothing more
 ```
 
 Or with every field set:

@@ -335,7 +335,7 @@ Both sides of `submit` diff against App Store Connect before writing, so re-runn
 
 **Screenshots.** Before wiping each set, `submit` calls `GET /appScreenshotSets/{id}/appScreenshots` and reads `sourceFileChecksum` (MD5 of the file bytes) and order. It then MD5s the local render PNGs in manifest order. If the lists match position-for-position, no DELETE or upload calls fire. The entry still appears in `report.screenshotUploads` with `count: 0` so the skip is visible.
 
-Any mismatch — different file content, different count, different order — falls back to the full wipe+reupload. This is correct because ASC's upload model can't reorder existing screenshots in place; a reorder is semantically a wipe.
+Any mismatch - different file content, different count, different order - falls back to the full wipe+reupload. This is correct because ASC's upload model can't reorder existing screenshots in place; a reorder is semantically a wipe.
 
 Practical effect: re-submitting after a rejection with only release-notes changes PATCHes only the `whatsNew` field and skips all 32 (or however many) screenshot uploads. Re-submitting with no changes at all is a handful of GETs and returns in seconds.
 

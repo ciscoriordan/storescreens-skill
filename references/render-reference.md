@@ -25,7 +25,7 @@ render:
 
 Every sub-block (background, scrim, images, laurels, logo, caption, chrome) may also appear inside a per-slide entry under `slides:` and will override the top-level value for just that slide. `images:` and `laurels:` are arrays, so a slide-level value replaces the top-level array wholesale (no element-by-element merge).
 
-Slide resolution order (narrow wins): `slides."Home".caption.title.color` overrides `caption.title.color`. When a `template:` is set, its values act as the outermost defaults — user-supplied fields in the top-level `render:` still win.
+Slide resolution order (narrow wins): `slides."Home".caption.title.color` overrides `caption.title.color`. When a `template:` is set, its values act as the outermost defaults - user-supplied fields in the top-level `render:` still win.
 
 ## Templates
 
@@ -64,7 +64,7 @@ background:
     opacity: 0.15            # 0..1, default 0.25
 ```
 
-Patterns draw on top of the solid/gradient color fill and under any user-supplied image. In multi-slide panoramas the pattern spans the full combo width and each slide renders its horizontal slice — adjacent slides line up seamlessly in the App Store Connect gallery.
+Patterns draw on top of the solid/gradient color fill and under any user-supplied image. In multi-slide panoramas the pattern spans the full combo width and each slide renders its horizontal slice - adjacent slides line up seamlessly in the App Store Connect gallery.
 
 ## Appearance variants
 
@@ -217,7 +217,7 @@ Up to 2 laurels per slide. Slot distribution follows the same rules as `images`:
 
 ## tables
 
-A 2D grid of text cells with optional borders. Same overlay slot semantics as `images` and `laurels` — up to two per slide, auto-distributed with equal whitespace when paired.
+A 2D grid of text cells with optional borders. Same overlay slot semantics as `images` and `laurels` - up to two per slide, auto-distributed with equal whitespace when paired.
 
 ```yaml
 tables:
@@ -245,7 +245,7 @@ tables:
 
 Use `columns:` instead of `rows:` to supply column-major content; the renderer transposes internally. Rows of unequal length are padded with empty cells at the end so the grid is always rectangular.
 
-Cell content can include `\n` for in-cell line breaks; the row containing the multi-line cell auto-grows to fit. With auto font sizing, this comes out of the table's overall `max_height_pct` budget — a row with 2-line cells is twice the height of a 1-line row, so other rows shrink proportionally.
+Cell content can include `\n` for in-cell line breaks; the row containing the multi-line cell auto-grows to fit. With auto font sizing, this comes out of the table's overall `max_height_pct` budget - a row with 2-line cells is twice the height of a 1-line row, so other rows shrink proportionally.
 
 ### Fields
 
@@ -323,7 +323,7 @@ caption:
   min_height_pct: 22          # reserves at least this much vertical space above the screenshot
   padding_pct: 5              # horizontal (left+right) inset for the whole caption block
 
-  vertical_align: center      # top | center (default) | bottom — where the block sits in its band
+  vertical_align: center      # top | center (default) | bottom - where the block sits in its band
   nudge:                      # fine-tune offset applied after vertical_align
     x_pct: 0                  # positive = right, negative = left
     y_pct: 0                  # positive = up, negative = down
@@ -341,9 +341,9 @@ caption:
 
 `align`, `vertical_align`, and `nudge` are independent:
 
-- `title.align` / `subtitle.align` — each role's horizontal alignment (left / center / right). Per-role so title and subtitle can align differently.
-- `vertical_align` — where the caption block sits inside its reserved band (`min_height_pct`). Block-level; title and subtitle move together.
-- `nudge.x_pct` / `nudge.y_pct` — fine-grained offset applied on top of the computed position. Also block-level. Useful for matching a specific mockup or nudging away from a notch/island.
+- `title.align` / `subtitle.align` - each role's horizontal alignment (left / center / right). Per-role so title and subtitle can align differently.
+- `vertical_align` - where the caption block sits inside its reserved band (`min_height_pct`). Block-level; title and subtitle move together.
+- `nudge.x_pct` / `nudge.y_pct` - fine-grained offset applied on top of the computed position. Also block-level. Useful for matching a specific mockup or nudging away from a notch/island.
 
 ## Fonts
 
