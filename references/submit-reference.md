@@ -32,7 +32,7 @@ app_store_connect:
 | `bundle_id` | string | - | Bundle identifier (e.g. `com.example.recipes`). Resolved via `GET /v1/apps?filter[bundleId]=...` at submit time. More convenient; use this unless you have a reason to hard-code the numeric ID. |
 | `metadata_dir` | string | `./metadata` | Directory containing `<locale>/*.txt` files. Relative paths resolve against the directory containing `storescreens.yml`. |
 | `submit` | object | - | Upload behaviour. See below. |
-| `pricing` | object | - | App-level pricing. Optional; unset leaves the existing schedule untouched. Today only free pricing is implemented. See "`pricing:` fields" below. |
+| `pricing` | object | - | App-level pricing: free, a single paid tier, or per-territory. Optional; unset leaves the existing schedule untouched. See "`pricing:` fields" below. |
 | `availability` | object | - | Territory availability. Optional; unset leaves current availability untouched. See "`availability:` fields" below. |
 | `categories` | object | - | Primary + secondary App Store categories (and optional subcategories). Optional; unset leaves existing categories untouched. See "`categories:` fields" below. |
 | `age_rating` | object | - | Age-rating questionnaire answers. Optional; unset leaves the existing declaration untouched. See "`age_rating:` fields" below. |
@@ -50,18 +50,30 @@ app_store_connect:
 
 ## `pricing:` fields
 
-Sets the app's price schedule. Today only the free case is implemented - use the ASC web UI for paid pricing until a `price_tier` field lands. Runs idempotently: if the app already has a schedule, submit leaves it untouched rather than replacing it. This is intentional - blindly re-POSTing would overwrite anything a teammate set by hand.
+Sets the app's price schedule: free, a single paid tier, or true per-territory pricing. Prices are local-currency amounts (no symbol) and snap to the nearest valid App Store tier, since Apple's tiers are a fixed ladder. Runs idempotently: if the app already has a schedule, submit leaves it untouched rather than replacing it (blindly re-POSTing would overwrite anything a teammate set by hand). To change an existing schedule outside submit, use `storescreens pricing set`.
 
 ```yaml
 app_store_connect:
   pricing:
-    free: true
+    free: true            # free everywhere
     base_territory: USA
+```
+
+```yaml
+app_store_connect:
+  pricing:
+    base_territory: USA
+    base_price: "4.99"    # paid; snapped to the nearest USA tier
+    territory_prices:     # optional per-territory overrides
+      GBR: "3.99"
+      JPN: "600"
 ```
 
 | Field | Type | Default | Notes |
 |-------|------|---------|-------|
-| `free` | bool | - | Required when the `pricing:` block is present. `true` creates a free schedule in the base territory; Apple auto-computes free prices everywhere else. `false` is rejected (paid pricing not yet wired up). |
+| `free` | bool | - | `true` creates a free schedule in the base territory; Apple auto-computes free prices everywhere else. Mutually exclusive with `base_price`. |
+| `base_price` | string | - | Paid base price in the base territory's local currency, e.g. `"4.99"`. Resolved to the nearest valid App Store tier. Mutually exclusive with `free`. |
+| `territory_prices` | map | - | Optional per-territory overrides: ISO 3166-1 alpha-3 code → local-currency amount (e.g. `JPN: "600"`). Each snaps to that territory's nearest tier; territories omitted are equivalenced from the base price. Paid apps only. |
 | `base_territory` | string | `USA` | ISO 3166-1 alpha-3 territory code used to anchor the schedule. Any territory works; USA matches the ASC web UI default. |
 
 ## `availability:` fields
