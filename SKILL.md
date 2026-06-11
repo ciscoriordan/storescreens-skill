@@ -1,6 +1,6 @@
 ---
 name: storescreens
-description: "Set up and run storescreens-cli to automate App Store screenshot capture for iOS apps: render captioned/framed App Store-ready screenshots with device bezels, markdown captions, and panoramic backgrounds; upload screenshots + per-locale metadata (name, subtitle, description, keywords, what's new, promotional text) to App Store Connect via the official API; and archive + upload the app binary (.ipa) to App Store Connect / TestFlight via xcodebuild + altool with a pinned non-beta Xcode. Also supports targeted screenshots for quick visual checks during development. Use this skill when the user wants to install or configure storescreens-cli, set up screenshot automation for an Xcode project, add UI tests that capture screenshots, write or update ScreenshotTests.swift, run storescreens capture, render framed/captioned App Store screenshots, install device bezels, iterate on caption text and styling, take a quick screenshot of the simulator ('show me what the app looks like'), configure App Store Connect API credentials (storescreens auth init / auth login, ASC API key), scaffold a metadata directory (storescreens metadata init), upload screenshots to App Store Connect, submit metadata, push to App Store, update what's new / description / keywords for a release, archive and upload a build to TestFlight ('ship a new release build', storescreens upload-build, upload-build init, build the .ipa), submit a binary to App Store Connect, or troubleshoot screenshot automation or build upload."
+description: "Set up and run storescreens-cli to automate App Store screenshot capture for iOS apps: render captioned/framed App Store-ready screenshots with device bezels, markdown captions, and panoramic backgrounds; upload screenshots + per-locale metadata (name, subtitle, description, keywords, what's new, promotional text) to App Store Connect via the official API; translate that metadata into other languages with a bring-your-own DeepL key; and archive + upload the app binary (.ipa) to App Store Connect / TestFlight via xcodebuild + altool with a pinned non-beta Xcode. Also supports targeted screenshots for quick visual checks during development. Use this skill when the user wants to install or configure storescreens-cli, set up screenshot automation for an Xcode project, add UI tests that capture screenshots, write or update ScreenshotTests.swift, run storescreens capture, render framed/captioned App Store screenshots, install device bezels, iterate on caption text and styling, take a quick screenshot of the simulator ('show me what the app looks like'), configure App Store Connect API credentials (storescreens auth init / auth login, ASC API key), scaffold a metadata directory (storescreens metadata init), translate per-locale metadata into other languages with a DeepL API key (storescreens translate), upload screenshots to App Store Connect, submit metadata, push to App Store, update what's new / description / keywords for a release, archive and upload a build to TestFlight ('ship a new release build', storescreens upload-build, upload-build init, build the .ipa), submit a binary to App Store Connect, or troubleshoot screenshot automation or build upload."
 ---
 
 # storescreens
@@ -839,6 +839,22 @@ Trailing whitespace and newlines are trimmed from each file. Unknown filenames i
 `privacy_url.txt` is optional and patches the App Info localization (app level), not the version localization; `submit` routes it to the correct endpoint automatically, no extra config required.
 
 When helping the user create these files, offer to draft the initial copy based on what the app does - keep it generic if they haven't given you specifics. Never invent claims about the app.
+
+### 10e2. Translate metadata with DeepL (optional)
+
+If the user only filled in their base locale (typically `en-US`) but ships in several languages, `storescreens translate` seeds the other locales with DeepL. It is bring-your-own-key: a free DeepL tier exists. Set `DEEPL_API_KEY` or run `storescreens translate auth login` (free-tier keys end in `:fx`).
+
+```bash
+storescreens translate run --dry-run    # preview which locale/field pairs would change
+storescreens translate run              # translate base -> every other locale folder
+storescreens translate status           # per-locale, per-field state
+```
+
+Defaults translate `name`, `subtitle`, `description`, `promotional_text`, `release_notes`, `keywords` (override with `--fields`); URLs and App Review contact fields are never translated. Base locale defaults to `en-US` (`--from`), targets default to every locale folder present (`--to` to limit).
+
+The overwrite policy is tracked in `metadata/.translations.json` (tell the user to commit it): a field with no translation gets one, a machine translation whose base text changed is re-translated, and a translation that was edited by hand is preserved. So the workflow is: change `en-US`, re-run `translate`, and only the stale locales refresh.
+
+IMPORTANT - DeepL output is a starting point, not ship-ready. After `translate run`, ALWAYS do a QA pass over the generated locales before `submit`: check brand names (DeepL will translate a product name you meant to keep verbatim), tone, ASO keyword quality, and the App Store length limits (name/subtitle 30, promo 170, keywords 100). Editing a file marks it reviewed; `storescreens translate status` lists what is still raw machine output. When you (the agent) edit a translation to fix it, that edit is preserved on the next run. Do not invent marketing claims while reviewing; only correct the translation of the existing base copy.
 
 ### 10f. Dry run to validate
 

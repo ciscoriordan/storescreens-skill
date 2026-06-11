@@ -238,6 +238,8 @@ metadata/
 
 `review_notes.txt` and the `review_contact_*.txt` / `review_demo_account_*.txt` files feed the version-level `appStoreReviewDetails` resource (the "App Review Information" panel in App Store Connect). They are version-scoped not locale-scoped on Apple's side, so put them under one locale only - typically your primary. If the same `review_*.txt` file shows up in multiple locale folders, the alphabetically-first one wins and `submit` warns about the rest.
 
+To seed the non-base locale folders instead of writing each by hand, fill in your base locale and run `storescreens translate` (bring your own DeepL key). It re-translates only fields whose base text changed and preserves any translation edited by hand, tracking state in `metadata/.translations.json` (commit it). DeepL output needs a human/agent QA pass before `submit`; `storescreens translate status` lists what is still raw machine output.
+
 ### File -> App Store Connect field mapping
 
 | File | ASC field (API) | Max length | Notes |
