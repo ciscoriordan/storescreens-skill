@@ -8,7 +8,7 @@ This skill lets an AI coding assistant handle the entire pipeline: installing th
 
 ## Prerequisites
 
-The skill installs [storescreens-cli](https://github.com/ciscoriordan/storescreens-cli) via Homebrew automatically if it's not already on your machine. You need **macOS 14+** and **Xcode 16+**.
+The skill installs [storescreens-cli](https://github.com/ciscoriordan/storescreens-cli) via Homebrew automatically if it's not already on your machine. It can also be installed with [mise](https://mise.jdx.dev) (`mise use -g github:ciscoriordan/storescreens-cli`) or [Mint](https://github.com/yonaskolb/Mint) (`mint install ciscoriordan/storescreens-cli storescreens`); see the [CLI install docs](https://github.com/ciscoriordan/storescreens-cli#install) for all options. You need **macOS 14+** and **Xcode 16+**.
 
 ## Install
 

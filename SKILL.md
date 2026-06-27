@@ -35,9 +35,13 @@ Print the full output - it shows the available subcommands and options so the us
 
 ```bash
 brew tap ciscoriordan/tap && brew install storescreens
-# or
+# or, with mise (prebuilt, no Swift toolchain - installs storescreens + storescreens-mcp):
+mise use -g github:ciscoriordan/storescreens-cli
+# or, the install script (CLI only):
 curl -fsSL https://raw.githubusercontent.com/ciscoriordan/storescreens-cli/main/install.sh | sh
 ```
+
+Prefer Homebrew or mise for an automated install - both are prebuilt and need no toolchain. storescreens is also installable with [Mint](https://github.com/yonaskolb/Mint) (`mint install ciscoriordan/storescreens-cli storescreens`), but Mint builds from source and needs a Swift toolchain, so reach for it only if the user asks.
 
 ---
 
