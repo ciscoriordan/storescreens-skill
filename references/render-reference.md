@@ -507,13 +507,15 @@ Device chrome around the screenshot.
 
 ```yaml
 chrome:
-  style: bezel                  # none | stroke | bezel
+  style: bezel                  # none | stroke | device | bezel
   fit: width                    # width (default) | height | contain
   stroke_color: "#ffffff"       # for style: stroke only
   stroke_width: 3               # px, for style: stroke
   corner_radius: auto           # 'auto' (device-derived) or a fixed number in px
   shadow: true
   padding_pct: 4                # inset from canvas edges (% of canvas width)
+  device_colorway: dark         # dark (default) | silver | natural - drawn frame body color
+  bezel_fallback: device        # device (default) | stroke | error - when no bezel is installed
 
   # bezel-only: preferences applied at `bezels import` time, not render time
   model_preference: ["Pro Max", "Pro", "Air"]
@@ -523,8 +525,9 @@ chrome:
 ### Chrome styles
 
 - **none** - screenshot drawn at the padded rect, no device frame.
-- **stroke** - rounded-rect clip with a device-derived corner radius, optional colored border, optional drop shadow. No asset download needed. Good default if you don't want to mess with bezels.
-- **bezel** - screenshot composited inside a real Apple device bezel (PSD sourced from Apple Design Resources). Requires bezel install (see below).
+- **stroke** - rounded-rect clip with a device-derived corner radius, optional colored border, optional drop shadow. No asset download needed. Good minimal look.
+- **device** - generic device frame drawn procedurally in CoreGraphics: metal band with a subtle gradient, dark bezel ring, side buttons, and a Dynamic Island or notch chosen from the screenshot's pixel dimensions (16:9-era screens get square display corners and no cutout). No asset download needed; the screenshot keeps its native aspect and is never cropped. iPhone and iPad only - MacBook renders fall back to stroke with a warning. `device_colorway` picks the body color.
+- **bezel** - screenshot composited inside a real Apple device bezel (PSD sourced from Apple Design Resources). Requires bezel install (see below). Until bezels are installed, each slide falls back per `bezel_fallback` (default: the drawn `device` frame, with a warning naming the missing canonical key).
 
 ### Chrome fit
 
@@ -539,9 +542,9 @@ Controls how the device + screenshot scale inside the padded canvas area.
 - `auto` -> uses the device's actual screen corner radius (looked up by screenshot pixel dimensions).
 - A number -> fixed px radius regardless of device.
 
-## Bezel install (required for `chrome.style: bezel`)
+## Bezel install (optional - upgrades `chrome.style: bezel` to Apple's real artwork)
 
-Bezel art is sourced from Apple Design Resources. Apple licenses the art for use with Apple products; StoreScreens does not redistribute it.
+Bezel art is sourced from Apple Design Resources. Apple licenses the art for use with Apple products; StoreScreens does not redistribute it. Renders never block on this install: without it, `bezel` chrome uses the drawn `device` frame and notes the fallback in the render warnings.
 
 ### One-time install
 

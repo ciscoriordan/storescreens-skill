@@ -181,6 +181,7 @@ Common iPad simulators:
 | Command | Description |
 |---------|-------------|
 | `storescreens render` | Re-render captioned/framed output from existing captures. No simulator, no xcodebuild. |
+| `storescreens themes suggest` | Suggest render themes (background, text color, frame colorway) from the captured screenshots' own colors. `--json` for structured output. |
 | `storescreens bezels import` | Auto-scan mounted Apple Design Resource DMGs; install bezel PNGs + sidecars |
 | `storescreens bezels import --volume PATH` | Import from a specific mount path (repeatable) |
 | `storescreens bezels import --yes` | Skip confirmation prompt |

@@ -452,7 +452,7 @@ Before touching YAML, ask the user:
 
 1. **What's the hero story?** Typically the first 2-3 slides in App Store Connect do 90% of the conversion work. What's the single most important thing to communicate? Often this becomes slide 1's title.
 2. **What's the slide order?** Get a numbered list. This list goes verbatim into the top-level `screenshots:` key in `storescreens.yml` - the render pipeline walks it in this exact order (no alphabetical reordering anywhere).
-3. **Bezels or no bezels?** `chrome.style: bezel` is the polished App Store look but needs bezel DMGs from Apple Design Resources. `chrome.style: stroke` looks clean, has zero external assets, and is a fine default while iterating.
+3. **Which frame look?** `chrome.style: bezel` is the polished App Store look: Apple's real bezel artwork once the DMGs are imported, and until then it automatically falls back to `device`, a procedurally drawn generic frame (band, bezel ring, Dynamic Island/notch, buttons) that needs zero external assets. `chrome.style: device` uses the drawn frame permanently; `stroke` is a minimal rounded-rect outline. All of these work out of the box - only real Apple artwork requires the bezel install below.
 4. **Light, dark, or both?** Most render fields (`background.image`, `background.color`, `images[].path`, `laurels[].color`) accept `{ light:, dark: }` variants.
 5. **Any brand fonts?** Four tiers available: `system` (SF Pro), installed family name, local `.otf`/`.ttf` path, `{ google: "Inter" }` (auto-downloaded), or `{ regular:, bold:, italic:, bold_italic: }` bundle for correct markdown bold/italic.
 
@@ -470,7 +470,9 @@ screenshots:
 
 This list is the single source of truth for display order. It drives capture filtering, render order, HTML preview order, and mtime stamping on the output PNGs (first in list = most recent mtime, so `ls -t` and Finder's "Date Created" both match). A panoramic background's left edge pins to the first entry here. An image with `placement: first_only` (also the default for `above_title`) draws on the first entry here.
 
-### 9c. Install bezels (only if using `chrome.style: bezel`)
+### 9c. Install bezels (optional - upgrades `bezel` chrome to Apple's real artwork)
+
+Without this install, `chrome.style: bezel` still renders fine using the drawn `device` frame (a warning in the render output says which slides used the fallback). Install the real bezels when the user wants Apple's own artwork.
 
 Apple licenses the bezel PSDs for use with their products. StoreScreens does not redistribute them - the user downloads once, then the importer extracts what it needs.
 
@@ -520,6 +522,14 @@ The template fills in `background`, `caption`, and `chrome` defaults (curated pa
 
 Once picked, continue with per-slide captions (Step 9d's "slides:" block below). Most users won't need the background / scrim / chrome sections when using a template.
 
+**Fast path - derive colors from the app itself.** When the user wants the store artwork to match their app's branding rather than a preset, run:
+
+```bash
+storescreens themes suggest          # analyzes the last capture; add --json for structured output
+```
+
+It returns up to three themes derived from the screenshots' dominant background and most vivid accent color (App Match, Brand Gradient, Soft Tint), each as a ready-to-paste `render:` snippet: `background.color` (solid or gradient), `caption.title.color`, and `chrome.device_colorway`, with legible contrast built in. The same analysis is available as the `suggest_themes` MCP tool. Present the options to the user, and always offer custom colors as an alternative. Apps with no saturated accent (grayscale UIs) get only App Match.
+
 Don't dump a huge render block on the user and hope it renders well. Add fields one at a time, run `storescreens render` after each, and open `preview.html` to inspect.
 
 Start with the minimum:
@@ -529,7 +539,7 @@ render:
   enabled: true
   output_dir: ./storescreens-framed
   chrome:
-    style: stroke         # quick-iterate; swap to bezel once bezels are imported
+    style: bezel          # drawn device frame out of the box; real Apple bezels once imported
 ```
 
 Add a background (solid color or image, with optional light/dark variants):
@@ -645,7 +655,7 @@ Then fill in per-slide caption text:
 
 **Highlights:** override color / weight / italic on literal substring matches. Case-sensitive. Applies to all occurrences in both title and subtitle. Each highlight sets any combination of `color`, `weight`, `italic`.
 
-**Chrome options:** `style: none | stroke | bezel`. `fit: width (default) | height | contain` controls how the device fills the canvas - `width` lets a tall device bleed past the bottom (classic App Store look). `corner_radius: auto` or a fixed px value. `model_preference` and `colorway_preference` influence which bezel gets picked at `bezels import` time.
+**Chrome options:** `style: none | stroke | device | bezel`. `fit: width (default) | height | contain` controls how the device fills the canvas - `width` lets a tall device bleed past the bottom (classic App Store look). `corner_radius: auto` or a fixed px value. `device_colorway: dark (default) | silver | natural` picks the drawn frame's body color (used by `device` chrome and the bezel fallback). `bezel_fallback: device (default) | stroke | error` controls what `bezel` chrome does when no bezel is installed for a screenshot. `model_preference` and `colorway_preference` influence which bezel gets picked at `bezels import` time.
 
 ### 9e. Iterate
 

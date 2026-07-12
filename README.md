@@ -65,8 +65,8 @@ For any assistant that supports skill files or custom instructions, point it at 
 6. Adds accessibility identifiers for reliable element targeting
 7. Runs preflight checks - errors and warnings are surfaced before capture, with a prompt to fix or continue
 8. Runs capture (via MCP tools when available, CLI otherwise)
-9. Walks you through a `render:` block for App Store-ready framed/captioned screenshots: background (solid, gradient, or panoramic image sliced across all slides), optional scrim, logo, device chrome (none / stroke / bezel), and markdown captions with per-slide highlights
-10. Guides you through `storescreens bezels import` - mounting Apple Design Resource DMGs and installing bezel assets
+9. Walks you through a `render:` block for App Store-ready framed/captioned screenshots: background (solid, gradient, or panoramic image sliced across all slides), optional scrim, logo, device chrome (none / stroke / device / bezel), and markdown captions with per-slide highlights
+10. Optionally guides you through `storescreens bezels import` - mounting Apple Design Resource DMGs and installing bezel assets (renders work without this via the drawn device frame)
 11. Iterates on caption/color/font changes via `storescreens render` without re-running a full capture
 12. Configures the App Store Connect API (`storescreens auth login`, `.p8` key, env vars) and uploads rendered screenshots + per-locale metadata (description, keywords, release notes, promotional text, privacy URL) to App Store Connect via `storescreens submit`, optionally auto-submitting the version for App Review
 13. Seeds non-base metadata locales from a base locale with a bring-your-own DeepL key (`storescreens translate`), re-translating only what went stale and QA-passing the machine output before submit
@@ -89,6 +89,7 @@ Available tools:
 | `list_screenshots` | List screenshots from the last capture |
 | `get_screenshot` | Load a saved PNG as inline image |
 | `read_config` / `write_config` | Read or write `storescreens.yml` |
+| `suggest_themes` | Suggest render themes derived from the captured screenshots' own colors |
 
 See [storescreens-cli](https://github.com/ciscoriordan/storescreens-cli#agent-skill) for setup instructions.
 
@@ -107,7 +108,7 @@ StoreScreens complements [Xcode's built-in MCP server](https://developer.apple.c
 - **`SKILL.md`** - Step-by-step instructions for the agent
 - **`storescreens.skill`** - Packaged skill archive (SKILL.md + references + assets)
 - **`references/config-reference.md`** - Top-level `storescreens.yml` config schema (devices, locales, test target, etc.)
-- **`references/render-reference.md`** - Full `render:` schema: background (including panoramic slicing), scrim, logo, caption (fonts, markdown, highlights), chrome (stroke / bezel), bezel install flow, caption shorthands, and a complete example
+- **`references/render-reference.md`** - Full `render:` schema: background (including panoramic slicing), scrim, logo, caption (fonts, markdown, highlights), chrome (stroke / device / bezel), bezel install flow, caption shorthands, and a complete example
 - **`references/submit-reference.md`** - Full App Store Connect upload schema: `app_store_connect:` block, `submit:` sub-block, credential resolution (env + `~/.storescreens/asc-credentials.yml`), `metadata/<locale>/*.txt` file layout and ASC field mapping, destructive upload semantics, troubleshooting, and a complete example
 - **`references/upload-build-reference.md`** - Full `upload_build:` schema: archiving, `.ipa` export, `altool` upload to App Store Connect / TestFlight, auto-versioning, non-beta Xcode auto-selection, and troubleshooting
 - **`assets/ScreenshotTests.swift.template`** - Starter XCUITest template. Mirrored from `storescreens-cli`'s `Resources/` on every release so it stays in sync with the CLI's expected cache-path contract.
