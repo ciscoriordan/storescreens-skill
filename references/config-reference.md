@@ -170,7 +170,7 @@ Common iPad simulators:
 | `--config PATH` | Config file path (default: `storescreens.yml`) |
 | `--output DIR` | Override output directory |
 | `--locale LOCALE` | Override locales (repeatable) |
-| `--retries N` | Retry failed test runs per device |
+| `--retries N` | Retry failed test runs per device (default: 1) |
 | `--keep-alive` | Keep simulators running after capture |
 | `--skip-check` | Skip preflight source code check |
 | `--verbose` | Show full xcodebuild output |
@@ -204,7 +204,7 @@ app_store_connect:
     metadata: true
     submit_for_review: false      # default false; true auto-submits for App Review
 
-  # Optional - all three are app-info / version metadata that lives in
+  # Optional - these are app-info / version metadata that lives in
   # App Store Connect outside of the per-locale .txt files. submit reads
   # current values, diffs against the YAML, and only PATCHes when
   # something differs. Full schema in submit-reference.md.
@@ -228,6 +228,14 @@ app_store_connect:
     email_address: jane@example.com
     notes: |
       Plain-text notes for Apple's reviewers.
+
+  submission_info:                  # PATCH /v1/appStoreVersions + /v1/apps
+    uses_idfa: false                # per version
+    contains_third_party_content: true   # per app, carries across releases
+
+  release:                          # PATCH /v1/appStoreVersions/{id}
+    type: scheduled                 # manual | after_approval | scheduled
+    earliest_release_date: "2026-08-10T12:00:00-07:00"   # exact hour, future, quoted
 ```
 
-Related commands: `storescreens auth login`, `storescreens auth status`, `storescreens auth logout`, `storescreens submit [--dry-run] [--skip-screenshots] [--skip-metadata] [--version-override X.Y.Z]`.
+Related commands: `storescreens auth login`, `storescreens auth status`, `storescreens auth logout`, `storescreens submit [--dry-run] [--skip-screenshots] [--skip-metadata] [--version-override X.Y.Z]`, `storescreens precheck [--check-urls]`.

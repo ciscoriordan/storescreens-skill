@@ -112,6 +112,7 @@ StoreScreens complements [Xcode's built-in MCP server](https://developer.apple.c
 - **`references/submit-reference.md`** - Full App Store Connect upload schema: `app_store_connect:` block, `submit:` sub-block, credential resolution (env + `~/.storescreens/asc-credentials.yml`), `metadata/<locale>/*.txt` file layout and ASC field mapping, destructive upload semantics, troubleshooting, and a complete example
 - **`references/upload-build-reference.md`** - Full `upload_build:` schema: archiving, `.ipa` export, `altool` upload to App Store Connect / TestFlight, auto-versioning, non-beta Xcode auto-selection, and troubleshooting
 - **`assets/ScreenshotTests.swift.template`** - Starter XCUITest template. Mirrored from `storescreens-cli`'s `Resources/` on every release so it stays in sync with the CLI's expected cache-path contract.
+- **`build-skill.sh`** - Rebuilds `storescreens.skill` from the files above. Run it after editing `SKILL.md` or anything in `references/`, and commit the result: the archive is a build product in git, so it goes stale silently otherwise. It refuses to build if a listed file is missing or if `SKILL.md` links to a reference the archive wouldn't carry.
 
 ## Related
 

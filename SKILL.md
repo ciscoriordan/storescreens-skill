@@ -704,7 +704,7 @@ Beyond the screenshot + metadata + build-upload workflow, storescreens-cli wraps
 | Webhooks (general-purpose) | `storescreens webhooks ...` | `webhooks_*` | Subscribe an HTTPS endpoint to live ASC events (build status, review state, app availability, TestFlight, IAP). CRUD on webhooks, list/get/resend on webhookDeliveries, create on webhookPings. Different from the EU-only `marketplaceWebhooks` covered by `altdist`. |
 | Build Uploads (API-native) | `storescreens build-uploads ...` | `build_uploads_*` | Alternative to altool for uploading .ipa binaries: buildUploads + buildUploadFiles resources, 3-phase reservation + chunked PUT + commit, plus a high-level `upload-ipa` convenience that handles the whole flow. |
 | Accessibility Declarations | `storescreens accessibility ...` | `accessibility_declarations_*` | Per-device-family Accessibility Nutrition Labels (VoiceOver, Voice Control, captions, dark interface, differentiate without color, larger text, reduced motion, sufficient contrast, audio descriptions). CRUD plus `publish` PATCH for DRAFT → PUBLISHED. |
-| Background Assets + Release Control | `storescreens background-assets ...`, `storescreens version-release ...` | `bg_assets_*`, `phased_release_*`, `version_promotion_*`, `version_release_request_*`, `end_preorder_*` | 200GB-per-app post-install asset download (chunked upload, version per build channel) + App Store release control (phased releases, promo carousel opt-in, manual release requests, end-pre-order). |
+| Background Assets + Release Control | `storescreens background-assets ...`, `storescreens version-release ...` | `bg_assets_*`, `phased_release_*`, `version_promotion_*`, `version_release_request_*`, `end_preorder_*`, `version_schedule_*`, `version_submission_info_set` | 200GB-per-app post-install asset download (chunked upload, version per build channel) + App Store release control (phased releases, promo carousel opt-in, manual release requests, end-pre-order, plus `schedule` for setting releaseType / earliestReleaseDate before approval). |
 | Game Center Activities + Challenges | `storescreens game-center-v2 ...` | `gc_activities_*`, `gc_challenges_*`, `gc_*_versions_v2_*`, `gc_*_submissions_*` | Activities (in-game events / tournaments) + Challenges (player-vs-player), with images / localizations / versions each. V2 versioning of achievements / leaderboards / leaderboard sets. Sandbox-only test-submission endpoints. Separate `game-center-v2` parent from Wave 2's `game-center`. |
 | Modern TestFlight Feedback + Beta Recruitment + Beta App Clip + IAP Offer Codes | `storescreens beta-feedback ...`, `storescreens beta-recruitment ...`, `storescreens beta-app-clip ...`, `storescreens iap-offer-codes ...` | `beta_feedback_*`, `beta_crash_logs_*`, `beta_recruitment_*`, `beta_app_clip_invocations_*`, `iap_offer_codes_*` | Modern TF feedback API (crash + screenshot submissions, downloadable crash logs), automatic-recruitment criteria, App Clip Beta invocation configs, one-time-IAP offer codes (custom + one-time-use). |
 | Subscription / Review / ASC late-2025 grab-bag | `storescreens subs-extras ...`, `storescreens review-extras ...`, `storescreens asc-extras ...` | `subext_*`, `revext_*`, `ascext_*` | Subscription intro offers, win-back offers (+ prices), grace periods, group submissions, price-point standalone gets. Customer review summarizations (Apple Intelligence) + review attachments with 3-phase upload. Merchant IDs, nominations, app tags, custom EULAs, Android→iOS user-migration mapping, in-app actors, app price points V3 + equalizations, App Clip advanced experience images, IAP availabilities + content metadata, territory availability update. |
@@ -870,6 +870,22 @@ The overwrite policy is tracked in `metadata/.translations.json` (tell the user 
 
 IMPORTANT - DeepL output is a starting point, not ship-ready. After `translate run`, ALWAYS do a QA pass over the generated locales before `submit`: check brand names (DeepL will translate a product name you meant to keep verbatim), tone, ASO keyword quality, and the App Store length limits (name/subtitle 30, promo 170, keywords 100). Editing a file marks it reviewed; `storescreens translate status` lists what is still raw machine output. When you (the agent) edit a translation to fix it, that edit is preserved on the next run. Do not invent marketing claims while reviewing; only correct the translation of the existing base copy.
 
+### 10e3. Precheck the metadata before uploading
+
+`storescreens precheck` scans `metadata/<locale>/*.txt` for what App Review rejects listings over. It needs no credentials and makes no network calls unless asked.
+
+```bash
+storescreens precheck               # offline rules
+storescreens precheck --check-urls  # also confirm every support / marketing / privacy link resolves
+storescreens precheck --json        # machine-readable
+```
+
+Errors: references to other platforms (Android, Google Play, BlackBerry - guideline 2.3.10), placeholder text (lorem ipsum, TODO), profanity, fields over Apple's character limits, malformed URLs, and unreachable URLs with `--check-urls`. Warnings: "coming soon" promises (guideline 2.1), pre-release framing like "beta", disparaging Apple (guideline 3.2.2), wasteful keyword formatting, and empty files (which blank the live field rather than leaving it alone). `--strict` makes warnings exit non-zero too.
+
+`submit --dry-run` runs the same offline rules automatically, so a separate precheck run is for when you want the per-finding detail or the link check.
+
+When a finding is a false positive - a legitimate use of a flagged word - say so plainly rather than rewriting the user's copy to appease the scanner. When it's real, offer a fix; don't silently edit their marketing text.
+
 ### 10f. Dry run to validate
 
 Always dry-run before the first real upload:
@@ -883,6 +899,8 @@ This validates:
 - app lookup (by `app_id` or `bundle_id`)
 - version find-or-create (reports whether it will create or update)
 - `metadata/<locale>/` parse with warnings for unknown files
+- the `precheck` guideline rules over that metadata (see 10e3)
+- `release:` scheduling format, if configured (ISO 8601, exact hour, future date, type/date pairing)
 - every rendered PNG: dimensions match an App Store display type, file under Apple's 8 MB per-screenshot cap
 
 No writes happen. Inspect the output with the user before going live.
@@ -1135,7 +1153,8 @@ Or with a full path if not on `$PATH`:
 | `capture` | Start screenshot capture in background; returns `taskId` immediately |
 | `get_capture_status` | Poll progress for a running capture; returns live events + status |
 | `get_capture_result` | Fetch full manifest once capture is complete |
-| `check` | Run preflight scan; returns `[{rule, severity, file, line, message}]` |
+| `check` | Run preflight scan over Swift source; returns `[{rule, severity, file, line, message}]` |
+| `precheck` | Scan `metadata/<locale>/*.txt` for App Review guideline problems; returns `[{rule, severity, locale, file, line, message}]`. Optional `check_urls` also confirms every link resolves. |
 | `list_simulators` | List available simulators grouped by App Store slot |
 | `list_screenshots` | List screenshots from the last capture (reads `manifest.json`) |
 | `get_screenshot` | Load a PNG as base64 (Claude renders it inline) |

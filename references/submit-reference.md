@@ -37,6 +37,8 @@ app_store_connect:
 | `categories` | object | - | Primary + secondary App Store categories (and optional subcategories). Optional; unset leaves existing categories untouched. See "`categories:` fields" below. |
 | `age_rating` | object | - | Age-rating questionnaire answers. Optional; unset leaves the existing declaration untouched. See "`age_rating:` fields" below. |
 | `review_info` | object | - | App Review Information panel (notes, contact, demo account). Optional; YAML alternative to per-locale `review_*.txt` files - either flow ends up at the same `appStoreReviewDetails` resource. See "`review_info:` fields" below. |
+| `submission_info` | object | - | IDFA and content-rights answers. Optional; unset leaves both untouched. See "`submission_info:` fields" below. |
+| `release` | object | - | When an approved version reaches customers (manual, on approval, or scheduled). Optional; unset leaves the version's current policy alone. See "`release:` fields" below. |
 
 ## `submit:` fields
 
@@ -196,6 +198,42 @@ app_store_connect:
 | `notes` | string | - | Free-form notes. Multi-line via YAML pipe literal (`notes: \|`). Up to 4000 characters. |
 
 API endpoint: `appStoreReviewDetails` (POST when one doesn't exist on the version yet, PATCH when it does). Diffed before write; unchanged values produce a `review detail: unchanged` log line and no API call.
+
+## `submission_info:` fields
+
+The two submission questions that aren't export compliance. Export compliance lives on `submit.export_compliance` instead, because Apple hangs it off the build rather than the version.
+
+```yaml
+app_store_connect:
+  submission_info:
+    uses_idfa: false
+    contains_third_party_content: true
+```
+
+| Field | Type | Default | Notes |
+|-------|------|---------|-------|
+| `uses_idfa` | bool | - | Does the app use the Advertising Identifier? Lands on `appStoreVersions.usesIdfa`, so it is answered per version. fastlane calls this `submission_information[add_id_info_uses_idfa]`. Answering `true` obliges you to complete the rest of Apple's IDFA questionnaire (attribution, ad serving, limit-ad-tracking) in the ASC web UI - the API exposes only this boolean. |
+| `contains_third_party_content` | bool | - | Does the app contain, show, or access third-party content? Lands on `apps.contentRightsDeclaration` as `USES_THIRD_PARTY_CONTENT` / `DOES_NOT_USE_THIRD_PARTY_CONTENT`, so it is answered once per app and carries across releases. fastlane calls this `submission_information[content_rights_contains_third_party_content]`. |
+
+Both are diffed before write. `uses_idfa` shares one PATCH with the `release:` fields since they live on the same `appStoreVersions` record. Report line: `submission info (IDFA / content rights): updated: contentRightsDeclaration, usesIdfa`.
+
+## `release:` fields
+
+When an approved version reaches customers. Covers fastlane's `automatic_release` + `auto_release_date` pair.
+
+```yaml
+app_store_connect:
+  release:
+    type: scheduled
+    earliest_release_date: "2026-08-10T12:00:00-07:00"
+```
+
+| Field | Type | Default | Notes |
+|-------|------|---------|-------|
+| `type` | enum | - | `manual`, `after_approval`, or `scheduled`. `manual` holds the version in `PENDING_DEVELOPER_RELEASE` after approval until you run `storescreens version-release release-request`. `after_approval` is Apple's default and ships on approval. `scheduled` ships at `earliest_release_date`. Maps to `appStoreVersions.releaseType` (`MANUAL` / `AFTER_APPROVAL` / `SCHEDULED`). |
+| `earliest_release_date` | string | - | ISO 8601 publish time, e.g. `"2026-08-10T12:00:00-07:00"`. Must be on an exact hour, must be in the future, and is only valid with `type: scheduled` - Apple 422s a date on any other release type. Quote it in YAML or it parses as a timestamp rather than a string. |
+
+`submit --dry-run` checks the format, the exact-hour rule, the future-date rule, and the type/date pairing before any upload happens. For a version that already exists, `storescreens version-release schedule --version-id <id> --release-type <type> [--earliest-release-date <iso>]` sets the same two attributes without a full submit run; calling it with neither option reads the current policy.
 
 ## Metadata directory layout
 
@@ -365,9 +403,12 @@ Runs through:
 - app lookup (by `app_id` or `bundle_id`)
 - version find-or-create (read-only: reports whether it will create or update)
 - per-locale metadata directory parse, including unknown-file warnings
+- category ids validated against `GET /v1/appCategories`
+- `release:` format checks (ISO 8601, exact hour, future date, type/date pairing)
+- the offline `precheck` guideline rules over the metadata files (other-platform mentions, placeholder text, profanity, field lengths, URL format)
 - every rendered PNG: dimension match against App Store display types and the 8MB per-file cap
 
-No writes happen. Use this as your pre-flight before a live submit.
+No writes happen. Use this as your pre-flight before a live submit. For the guideline rules on their own, with more detail and an optional link-reachability pass, run `storescreens precheck` (`--check-urls`).
 
 ## Troubleshooting
 
