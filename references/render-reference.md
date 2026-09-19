@@ -157,7 +157,7 @@ When a caption is present, the `above_title` slot extends from the canvas top do
 
 When there is no caption text, the slot collapses to the legacy canvas-top band sized to the image, so middle-slot-only configs keep their old layout.
 
-This is a behaviour change in 2.8.0. Pre-2.8 configs that used `images[].nudge.y_pct` to manually pull the logo down toward the caption can drop the nudge; the default already balances the gaps. To restore the old "logo glued to canvas top" look, set a positive `nudge.y_pct` to push the image back up.
+This is a behavior change in 2.8.0. Pre-2.8 configs that used `images[].nudge.y_pct` to manually pull the logo down toward the caption can drop the nudge; the default already balances the gaps. To restore the old "logo glued to canvas top" look, set a positive `nudge.y_pct` to push the image back up.
 
 ### Stacking and distribution
 
@@ -517,16 +517,17 @@ chrome:
   device_colorway: dark         # dark (default) | silver | natural - drawn frame body color
   bezel_fallback: device        # device (default) | stroke | error - when no bezel is installed
 
-  # bezel-only: preferences applied at `bezels import` time, not render time
-  model_preference: ["Pro Max", "Pro", "Air"]
-  colorway_preference: ["Space Black", "Silver"]
+  # Accepted but not read yet: `bezels import` ranks with fixed defaults
+  # (see "Bezel install" below), and render uses whichever bezel is installed
+  # model_preference: ["Pro Max", "Pro", "Air"]
+  # colorway_preference: ["Space Black", "Silver"]
 ```
 
 ### Chrome styles
 
 - **none** - screenshot drawn at the padded rect, no device frame.
 - **stroke** - rounded-rect clip with a device-derived corner radius, optional colored border, optional drop shadow. No asset download needed. Good minimal look.
-- **device** - generic device frame drawn procedurally in CoreGraphics: metal band with a subtle gradient, dark bezel ring, side buttons, and a Dynamic Island or notch chosen from the screenshot's pixel dimensions (16:9-era screens get square display corners and no cutout). No asset download needed; the screenshot keeps its native aspect and is never cropped. iPhone and iPad only - MacBook renders fall back to stroke with a warning. `device_colorway` picks the body color.
+- **device** - generic device frame drawn procedurally in CoreGraphics: metal band with a subtle gradient, dark bezel ring, side buttons, and a Dynamic Island or notch chosen from the screenshot's pixel dimensions (16:9-era screens get square display corners and no cutout). No asset download needed; the screenshot keeps its native aspect and is never cropped. iPhone and iPad only - MacBook renders fall back to stroke with a warning. `device_colorway` picks the body color. iPhone Duo screenshots get a Duo frame matched to the display they came from: the outer display (1398x2034) with tight corners on the hinge side and its camera, or the unfolded inner display (2007x2853).
 - **bezel** - screenshot composited inside a real Apple device bezel (PSD sourced from Apple Design Resources). Requires bezel install (see below). Until bezels are installed, each slide falls back per `bezel_fallback` (default: the drawn `device` frame, with a warning naming the missing canonical key).
 
 ### Chrome fit
@@ -556,19 +557,33 @@ Bezel art is sourced from Apple Design Resources. Apple licenses the art for use
 storescreens bezels import
 ```
 
-This scans all mounted Apple Design Resource DMGs, parses each PSD, reads the Screen layer's pixel dimensions, applies `model_preference` + `colorway_preference` (falling back to `Space Black` -> `Silver`/`Natural Titanium` defaults), and exports transparent-screen PNGs plus JSON sidecars into:
+This scans all mounted Apple Design Resource DMGs, parses each PSD, reads the Screen layer's pixel dimensions, keeps one PSD per screen size and orientation, and exports transparent-screen PNGs plus JSON sidecars into the user-global directory, shared by every project:
 
 ```
 ~/Library/Application Support/storescreens/bezels/
 ```
 
+When several PSDs fit one size, the importer ranks them with fixed defaults, in this order:
+
+1. A file name that states the orientation (`Outer Closed Portrait`) beats one that doesn't (`Outer Open`).
+2. Model: `Pro Max`, `Pro`, `Air`, `mini`, then any other.
+3. The newer iPhone generation (iPhone 18 Pro Max over iPhone 17 Pro Max), ahead of colorway.
+4. Colorway: `Space Black`, `Black`, `Night Sky`, `Natural Titanium`, `Silver`, `Space Gray`, `Deep Blue`, then any other.
+5. File name, alphabetically.
+
+`render.chrome.model_preference` / `colorway_preference` are not read by the importer. For a different finish, copy that PSD (keeping its file name) into an empty folder and run `storescreens bezels import --volume <folder>`; only the sizes it covers are replaced.
+
+DMG-specific behavior:
+
+- **iPhone 18** (iPhone 18 Pro and Pro Max; Black, Silver, Glacier, Burgundy) imports like the iPhone 17 DMG. The screens are the same size as the 17 Pro and 17 Pro Max, so both DMGs supply the same bezel keys; when both are mounted, the iPhone 18 artwork wins.
+- **iPhone Duo** (Night Sky, Star White) contributes four poses: `Inner Open Portrait` / `Inner Open Landscape` for the inner display (2007x2853) and `Outer Closed Portrait` / `Outer Closed Landscape` for the outer display (1398x2034). `Outer Open` (the open phone seen from the back) is ignored; the outer display uses `Outer Closed Portrait`.
+
 Flags:
 
 | Flag | Description |
 |------|-------------|
-| `--volume PATH` | Use a specific mount path instead of auto-scanning `/Volumes/`. Repeatable. |
+| `--volume PATH` | Scan this one path (a mounted DMG or any folder of PSDs) instead of auto-scanning `/Volumes/`. |
 | `--yes` | Skip the confirmation prompt before writing assets. |
-| `--verbose` | Show every PSD considered and why it was or wasn't picked. |
 
 ### Inspect
 
@@ -646,7 +661,7 @@ project: Recipes.xcodeproj
 scheme: Recipes
 
 devices:
-  - simulator: "iPhone 17 Pro Max"
+  - simulator: "iPhone 18 Pro Max"      # iOS 26 runtimes: "iPhone 17 Pro Max"
   - simulator: "iPad Pro 13-inch (M5)"
 
 appearances:
@@ -714,8 +729,6 @@ render:
     fit: width
     shadow: true
     padding_pct: 4
-    model_preference: ["Pro Max", "Pro"]
-    colorway_preference: ["Space Black", "Natural Titanium"]
 
   slides:
     "Home":

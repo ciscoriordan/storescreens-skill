@@ -31,7 +31,7 @@ app_store_connect:
 | `app_id` | string | - | Numeric App Store Connect app ID (visible in the ASC URL as `/apps/<id>/`). Exactly one of `app_id` or `bundle_id` must be set. |
 | `bundle_id` | string | - | Bundle identifier (e.g. `com.example.recipes`). Resolved via `GET /v1/apps?filter[bundleId]=...` at submit time. More convenient; use this unless you have a reason to hard-code the numeric ID. |
 | `metadata_dir` | string | `./metadata` | Directory containing `<locale>/*.txt` files. Relative paths resolve against the directory containing `storescreens.yml`. |
-| `submit` | object | - | Upload behaviour. See below. |
+| `submit` | object | - | Upload behavior. See below. |
 | `pricing` | object | - | App-level pricing: free, a single paid tier, or per-territory. Optional; unset leaves the existing schedule untouched. See "`pricing:` fields" below. |
 | `availability` | object | - | Territory availability. Optional; unset leaves current availability untouched. See "`availability:` fields" below. |
 | `categories` | object | - | Primary + secondary App Store categories (and optional subcategories). Optional; unset leaves existing categories untouched. See "`categories:` fields" below. |
@@ -47,7 +47,7 @@ app_store_connect:
 | `create_version` | string | - | **Required.** Target App Store version string (e.g. `1.2.0`). If the version doesn't exist in App Store Connect yet, it is created. Can be overridden on the CLI with `--version-override`. |
 | `screenshots` | bool | `true` | Upload rendered screenshots. Set to `false` for a metadata-only submit. Also controllable via `--skip-screenshots`. |
 | `metadata` | bool | `true` | Upload per-locale metadata. Set to `false` for a screenshots-only submit. Also controllable via `--skip-metadata`. |
-| `submit_for_review` | bool | `false` | When `true`, `submit` drives Apple's `reviewSubmissions` 3-step flow (create submission, attach the version as an item, PATCH `submitted: true`) after screenshots and metadata have been uploaded successfully. The submission ID and final state (typically `WAITING_FOR_REVIEW`) are included in the report output. Submission runs only after the uploads succeed, so the version is complete when Apple picks it up. Before creating a new submission, `submit` runs a cleanup-or-adopt pre-flight: any prior `UNRESOLVED_ISSUES` (rejected) submission is cancelled via PATCH `canceled: true`; any stale `READY_FOR_REVIEW` draft is either adopted (when items already reference the target version, or items are empty so the version can be attached) or cancelled (when items reference a different version). Adopted drafts are finalized in place rather than recreated, which is the only programmatic recovery from a prior aborted submit that left an empty orphan. If a prior submission is in `IN_REVIEW` or `WAITING_FOR_REVIEW`, `submit` refuses to auto-cancel and surfaces a loud error so you can decide whether to cancel explicitly (`storescreens review-submissions cancel <id> --wait`, then re-run `submit`). When `attach_build` is also `true`, `submit` polls `/v1/builds` for up to 20 minutes waiting for a VALID build before creating the review submission, so a same-session upload-build + submit pair works without a manual wait. Default is `false` because review submission is irreversible without reviewer intervention, so opt in explicitly when you are ready to ship. |
+| `submit_for_review` | bool | `false` | When `true`, `submit` drives Apple's `reviewSubmissions` 3-step flow (create submission, attach the version as an item, PATCH `submitted: true`) after screenshots and metadata have been uploaded successfully. The submission ID and final state (typically `WAITING_FOR_REVIEW`) are included in the report output. Submission runs only after the uploads succeed, so the version is complete when Apple picks it up: if any screenshot set failed to upload or was refused (e.g. more than 10 screenshots for one set), the review submission is skipped with an error; iPhone Duo skips and devices left out of a shared slot don't block it. Before creating a new submission, `submit` runs a cleanup-or-adopt pre-flight: any prior `UNRESOLVED_ISSUES` (rejected) submission is canceled via PATCH `canceled: true`; any stale `READY_FOR_REVIEW` draft is either adopted (when items already reference the target version, or items are empty so the version can be attached) or canceled (when items reference a different version). Adopted drafts are finalized in place rather than recreated, which is the only programmatic recovery from a prior aborted submit that left an empty orphan. If a prior submission is in `IN_REVIEW` or `WAITING_FOR_REVIEW`, `submit` refuses to auto-cancel and surfaces a loud error so you can decide whether to cancel explicitly (`storescreens review-submissions cancel <id> --wait`, then re-run `submit`). When `attach_build` is also `true`, `submit` polls `/v1/builds` for up to 20 minutes waiting for a VALID build before creating the review submission, so a same-session upload-build + submit pair works without a manual wait. Default is `false` because review submission is irreversible without reviewer intervention, so opt in explicitly when you are ready to ship. |
 | `platform` | string | `IOS` | ASC platform enum: `IOS`, `MAC_OS`, `TV_OS`, `VISION_OS`. Rarely needs override; derive from your app's actual platform. |
 
 ## `pricing:` fields
@@ -367,11 +367,30 @@ The command is non-destructive by default: it creates missing locale subdirector
 | `--skip-metadata` | Upload screenshots only. |
 | `--submit-for-review` / `--no-submit-for-review` | Override `app_store_connect.submit.submit_for_review` for this run. Use the positive form to trigger review submission without editing the yml; the negative form suppresses it even when the yml sets `true`. When neither flag is passed, the yml value is used. Combine with `--skip-screenshots --skip-metadata` to fire only the review submission against an already-uploaded version. |
 
+## Screenshot display types
+
+Each rendered PNG goes into the App Store Connect screenshot set (display type) that matches its pixel size. The full size table, with the simulators that produce each size, is in `references/config-reference.md`. The iPhone values in short:
+
+| Display type | App Store Connect slot | Sizes (px, portrait) |
+|--------------|------------------------|----------------------|
+| `APP_IPHONE_67` | 6.9" | 1320x2868 (iPhone 18/17/16 Pro Max), 1290x2796, 1260x2736 (iPhone Air) |
+| `APP_IPHONE_65` | 6.5" | 1284x2778, 1242x2688 |
+| `APP_IPHONE_61` | 6.3" | 1206x2622 (iPhone 18 Pro, 17 Pro, 17, 16 Pro), 1179x2556 |
+| `APP_IPHONE_58` | 6.1" | 1170x2532, 1125x2436, 1080x2340 |
+| `APP_IPHONE_55` / `_47` / `_40` / `_35` | 5.5" / 4.7" / 4" / 3.5" | 1242x2208 / 750x1334 / 640x1136 / 640x960 |
+
+The number in each name is historical: `APP_IPHONE_67` holds the 6.9" class and `APP_IPHONE_61` the 6.3" class. iPad: `APP_IPAD_PRO_3GEN_129` (13", 2064x2752), `APP_IPAD_PRO_129` (2048x2732), `APP_IPAD_PRO_3GEN_11` (11": 1668x2420, 1668x2388, 1640x2360, 1488x2266), `APP_IPAD_105` (1668x2224), `APP_IPAD_97` (1536x2048).
+
+- **Several devices in one slot.** If configured devices produce screenshots for the same slot (iPhone Air and iPhone 18 Pro Max in 6.9"; iPhone 17 Pro and iPhone 18 Pro in 6.3"), `submit` uploads one device's screenshots for that slot and prints a notice naming the others. It picks the device with the largest screen in the slot (6.9": 1320x2868, then 1290x2796, then 1260x2736; 11" iPad: 1668x2420 first, 1488x2266 last); config order breaks ties between equal screens (iPhone 17 Pro and iPhone 18 Pro). The choice is made once per display type and holds for all locales; in a locale where the chosen device has more than 10 screenshots, the next device in that order is used, and the over-limit device is still reported as an error. Capture also warns when two devices write the same file names (iPhone 17 Pro and iPhone 18 Pro are both labeled `iPhone 6.3"`).
+- **10 screenshots per set.** App Store Connect holds at most 10 screenshots in one set, and the light and dark captures of one device share a set, so a device captured in both appearances fits only with 5 slides or fewer. A device over the limit is always an error: `submit` exits non-zero and `submit_for_review` is skipped, even when the next device in the slot fills the set. If no device in a slot fits, nothing is uploaded to that set for that locale (its current screenshots stay). `--dry-run` reports the same problem and exits non-zero.
+- **iPhone Duo.** App Store Connect doesn't accept iPhone Duo screenshots (1398x2034 outer, 2007x2853 inner) yet; Apple says upload support arrives later this year. `submit` skips them with a notice and does not fail.
+- **Older storescreens versions.** 3.11.3 and earlier uploaded 6.3" screenshots (iPhone 18 Pro, 17 Pro, 17, 16 Pro) and iPhone Air screenshots under `APP_IPHONE_63`, which App Store Connect doesn't define, so those uploads failed with a 409. Upgrade before submitting them.
+
 ## Destructive upload semantics
 
 Screenshot uploads are intentionally destructive so that the local rendered PNGs are always the source of truth:
 
-1. For every (locale, display type) pair in the rendered manifest, the existing App Store Connect screenshot set is wiped.
+1. For every (locale, display type) pair in the rendered manifest, the existing App Store Connect screenshot set is wiped. A set that can't be filled within the 10-screenshot limit is refused before any API call and left as it is.
 2. Fresh PNGs are uploaded in the manifest's order. The manifest order becomes the App Store display order.
 3. Each upload is confirmed by MD5 hash before the next.
 
@@ -407,6 +426,7 @@ Runs through:
 - `release:` format checks (ISO 8601, exact hour, future date, type/date pairing)
 - the offline `precheck` guideline rules over the metadata files (other-platform mentions, placeholder text, profanity, field lengths, URL format)
 - every rendered PNG: dimension match against App Store display types and the 8MB per-file cap
+- every screenshot set: which device fills it, and whether it fits App Store Connect's limit of 10 screenshots
 
 No writes happen. Use this as your pre-flight before a live submit. For the guideline rules on their own, with more detail and an optional link-reachability pass, run `storescreens precheck` (`--check-urls`).
 
@@ -414,7 +434,8 @@ No writes happen. Use this as your pre-flight before a live submit. For the guid
 
 - **`credentials not configured`** - run `storescreens auth init` (recommended) or `storescreens auth login`, or export `ASC_KEY_ID`, `ASC_ISSUER_ID`, `ASC_KEY_PATH`. `auth status` will tell you which source it found.
 - **`no App Store Connect app matched: <bundle>`** - the `bundle_id` in config doesn't match any app in your ASC team. Confirm the bundle ID is an exact match, or switch to `app_id`.
-- **`no ASC display type for WxH`** - a rendered PNG has dimensions that don't match any App Store Connect slot. Usually means you captured with a non-App-Store simulator (e.g. `iPhone 16 Plus`, which corresponds to the 6.7" slot that doesn't exist in ASC). Re-capture with a supported simulator per `references/config-reference.md`.
+- **`no ASC display type for WxH`** - a rendered PNG has dimensions that don't match any App Store Connect slot. Usually means you captured with a simulator whose screen size Apple doesn't accept (e.g. `iPhone 11` at 828x1792, or `iPad (9th generation)` at 1620x2160). Re-capture with a supported simulator per `references/config-reference.md`. iPhone Duo screenshots are not this error; they are skipped with a notice (see "Screenshot display types").
+- **409 on 6.3" or iPhone Air screenshots** - storescreens 3.11.3 or earlier, which used the undefined display type `APP_IPHONE_63`. Upgrade and re-run `submit`.
 - **`8MB limit exceeded`** - Apple caps individual screenshots at 8 MB. Reduce render complexity (smaller background image, lighter scrim) or lower PNG compression.
 - **`app_store_connect.submit.create_version is required`** - set `submit.create_version` in the YAML or pass `--version-override`.
 - **Locale not appearing in the upload summary** - every `metadata/<locale>/` file was empty or unknown. Only supported filenames (`name.txt`, `subtitle.txt`, `description.txt`, `keywords.txt`, `promotional_text.txt`, `release_notes.txt`, `support_url.txt`, `marketing_url.txt`, `privacy_url.txt`) count; anything else is skipped with a warning.
@@ -434,7 +455,7 @@ project: Recipes.xcodeproj
 scheme: Recipes
 
 devices:
-  - simulator: "iPhone 17 Pro Max"
+  - simulator: "iPhone 18 Pro Max"      # iOS 26 runtimes: "iPhone 17 Pro Max"
   - simulator: "iPad Pro 13-inch (M5)"
 
 appearances:

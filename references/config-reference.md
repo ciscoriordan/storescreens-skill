@@ -8,8 +8,8 @@ project: "MyApp.xcodeproj"
 scheme: "MyApp"
 
 devices:
-  - simulator: "iPhone 17 Pro Max"   # App Store 6.9"
-  - simulator: "iPhone 17 Pro"       # App Store 6.3"
+  - simulator: "iPhone 18 Pro Max"   # App Store 6.9" (iOS 26 runtimes: "iPhone 17 Pro Max")
+  - simulator: "iPhone 18 Pro"       # App Store 6.3" (iOS 26 runtimes: "iPhone 17 Pro")
   - simulator: "iPad Pro 13-inch (M5)"
   # macOS: tests run natively, no simulator needed
   # - simulator: "Mac 2560x1600"
@@ -112,36 +112,51 @@ test_class: ScreenshotTests
 
 Use `storescreens list` to see available simulators and their App Store size mappings.
 
-App Store Connect iPhone slots and the simulators that fill them:
+Which simulator names you have depends on the installed simulator runtimes, not on the Xcode version. iOS 27 runtimes (Xcode 27 or later) create `iPhone 18 Pro Max` (6.9") and `iPhone 18 Pro` (6.3"). iOS 26 runtimes create `iPhone 17 Pro Max` and `iPhone 17 Pro`, which still work from Xcode 27 when an iOS 26 runtime is installed. The screens are identical, so the pairs are interchangeable. `iPhone Air`, `iPhone 17`, and `iPhone 17e` exist on both runtimes. Run `storescreens list` to see the names you have. `storescreens init` picks the newest 6.9"-class iPhone installed and never the iPhone Duo.
 
-| App Store Connect slot | storescreens size | Simulator |
-|------------------------|-------------------|-----------|
-| 6.9" (primary required) | **6.9"** | `iPhone 17 Pro Max` |
-| 6.5" (auto-filled from 6.9") ¹ | **6.5"** | `iPhone 11 Pro Max`, `iPhone Xs Max` ² |
-| 6.3" | **6.3"** | `iPhone 17 Pro`, `iPhone 17`, `iPhone Air` |
-| 6.1" | **6.1"** | `iPhone 16`, `iPhone 15` |
-| 5.5" | **5.5"** | `iPhone 8 Plus` |
-| 4.7" | **4.7"** | `iPhone SE (3rd generation)` |
+`submit` picks each screenshot's App Store Connect slot (display type) from the PNG's pixel size. App Store Connect iPhone slots and the simulators that fill them:
 
-**No 6.7" slot exists in App Store Connect.** Do not use `iPhone 16 Plus`.
+| App Store Connect slot | Display type | Accepted sizes (px) | Simulator |
+|------------------------|--------------|---------------------|-----------|
+| 6.9" (primary required) | `APP_IPHONE_67` | 1320x2868, 1290x2796, 1260x2736 | `iPhone 18 Pro Max` (iOS 27 runtimes) or `iPhone 17 Pro Max` (iOS 26 runtimes) |
+| 6.5" (auto-filled from 6.9") ¹ | `APP_IPHONE_65` | 1284x2778, 1242x2688 | `iPhone 11 Pro Max`, `iPhone Xs Max` ² |
+| 6.3" | `APP_IPHONE_61` | 1206x2622, 1179x2556 | `iPhone 18 Pro` (iOS 27 runtimes) or `iPhone 17 Pro` (iOS 26 runtimes); `iPhone 17` |
+| 6.1" | `APP_IPHONE_58` | 1170x2532, 1125x2436, 1080x2340 | `iPhone 17e` |
+| 5.5" | `APP_IPHONE_55` | 1242x2208 | `iPhone 8 Plus` |
+| 4.7" | `APP_IPHONE_47` | 750x1334 | `iPhone SE (3rd generation)` |
+
+**No 6.7" slot exists in App Store Connect.** `APP_IPHONE_67` is the 6.9" slot; `iPhone 16 Plus` (1290x2796) and `iPhone Air` (1260x2736) screenshots upload there too, so neither adds a size next to a Pro Max. Two devices in one slot means `submit` uploads only one device's screenshots for it (with a notice): the one with the largest screen in the slot, with config order breaking ties between equal screens (iPhone 17 Pro and iPhone 18 Pro). The same device fills that slot in every locale; in a locale where it has more than 10 screenshots (light and dark of one device share a set), the next device is used and the over-limit device is reported as an error, which skips submit-for-review. See `submit-reference.md`.
 
 **¹ 6.5" is auto-filled** - when 6.9" screenshots are provided, App Store Connect automatically uses them for the 6.5" slot. You only need a dedicated 6.5" simulator if you want distinct screenshots there.
 
-**² 6.5" (1242×2688)** is the iPhone XS Max / 11 Pro Max resolution. No current simulator produces it - only these older simulators do.
+**² 6.5" sizes** (1242×2688 for iPhone Xs Max / 11 Pro Max, 1284×2778 for iPhone 12/13 Pro Max / 14 Plus) come only from older simulators.
+
+**File labels vs slots.** storescreens names output files by its own size labels (the App Store Size column of `storescreens list`), which don't always match the slot: iPhone Air (1260x2736) files are labeled `iPhone 6.3"` but upload to 6.9"; 1290x2796 is labeled `iPhone 6.7"` (uploads to 6.9"), 1284x2778 `iPhone 6.7"` (6.5"), 1179x2556 `iPhone 6.1"` (6.3"), 1125x2436 `iPhone 5.8"` and 1080x2340 `iPhone 5.4"` (6.1"). In a UI-test capture, devices with the same label write the same file names and one overwrites the other (capture warns), so never configure iPhone Air together with a 6.3" device, or iPhone 17 Pro together with iPhone 18 Pro.
 
 iPad slots:
 
-| App Store Connect slot | storescreens size | Simulator |
-|------------------------|-------------------|-----------|
-| 13" (primary required) | **iPad Pro 13"** | `iPad Pro 13-inch (M5)` |
-| 11" | **iPad Pro 11"** | `iPad Pro 11-inch (M5)` |
-| 12.9" (iPad Pro 2nd Gen) | **iPad Pro 12.9"** | `iPad Pro 12.9-inch (2nd generation)` ¹ |
-| 10.5" | **iPad 10.5"** | `iPad Air (3rd generation)` ¹ |
-| 9.7" | **iPad 9.7"** | `iPad (6th generation)` ¹ |
+| App Store Connect slot | Display type | Accepted sizes (px) | Simulator |
+|------------------------|--------------|---------------------|-----------|
+| 13" (primary required) | `APP_IPAD_PRO_3GEN_129` | 2064x2752 | `iPad Pro 13-inch (M5)` |
+| 11" | `APP_IPAD_PRO_3GEN_11` | 1668x2420, 1668x2388, 1640x2360, 1488x2266 | `iPad Pro 11-inch (M5)`, `iPad Air 11-inch (M4)`, `iPad mini (A17 Pro)` |
+| 12.9" (iPad Pro 2nd Gen) | `APP_IPAD_PRO_129` | 2048x2732 | `iPad Air 13-inch (M4)`, `iPad Pro (12.9-inch) (2nd generation)` ¹ |
+| 10.5" | `APP_IPAD_105` | 1668x2224 | `iPad Air (3rd generation)` ¹ |
+| 9.7" | `APP_IPAD_97` | 1536x2048 | `iPad (6th generation)` ¹ |
 
 **Recommend `iPad Pro 13-inch (M5)` as the starting point** - it covers the required 13" slot. Add others only if needed.
 
 **¹ Older slots** (12.9", 10.5", 9.7") require older simulator runtimes that may not be installed. Most apps only need 13".
+
+Sizes outside every class (e.g. 1620x2160 from `iPad (9th generation)`, 828x1792 from `iPhone 11`) fail `submit --dry-run` with a `no ASC display type` error.
+
+iPhone Duo (foldable):
+
+| Display | Screenshot size (px) | storescreens label | App Store Connect |
+|---------|----------------------|--------------------|-------------------|
+| Outer (folded) | 1398x2034 | `iPhone Duo outer` | Not accepted yet; `submit` skips with a notice |
+| Inner (open) | 2007x2853 | `iPhone Duo inner` | Not accepted yet; `submit` skips with a notice |
+
+The `iPhone Duo` simulator needs Xcode 27.1 beta or later plus the iOS 27.1 simulator runtime (`xcodebuild -downloadPlatform iOS` with the beta selected). storescreens runs against whichever Xcode `xcode-select` or `DEVELOPER_DIR` selects, so capture the Duo from a separate config that lists only it, has its own `output_dir` (and `render.output_dir`, if rendering; a successful capture replaces the previous output in its directory), and drops the `search_preview` block (search previews never use Duo screenshots, so a Duo-only run would overwrite the main previews with empty tiles): `DEVELOPER_DIR=/Applications/Xcode-27.1.0-Beta.app/Contents/Developer storescreens capture --config storescreens-duo.yml --no-search-preview` (the path `xcodes install 27.1 Beta` uses). The pose can't be set from the command line or a UI test (only in Xcode's Device Hub); the simulator boots folded, so captures are outer-display screenshots unless it is opened there. Each screenshot is labeled by the display it came from. The first simulator launch can take several minutes.
 
 Mac App Store slots:
 
@@ -183,7 +198,7 @@ Common iPad simulators:
 | `storescreens render` | Re-render captioned/framed output from existing captures. No simulator, no xcodebuild. |
 | `storescreens themes suggest` | Suggest render themes (background, text color, frame colorway) from the captured screenshots' own colors. `--json` for structured output. |
 | `storescreens bezels import` | Auto-scan mounted Apple Design Resource DMGs; install bezel PNGs + sidecars |
-| `storescreens bezels import --volume PATH` | Import from a specific mount path (repeatable) |
+| `storescreens bezels import --volume PATH` | Import from one specific mount path instead of scanning `/Volumes` |
 | `storescreens bezels import --yes` | Skip confirmation prompt |
 | `storescreens bezels check` | List installed bezels |
 | `storescreens bezels path` | Print the bezel install directory (`~/Library/Application Support/storescreens/bezels/`) |

@@ -118,12 +118,12 @@ If `storescreens.yml` does not exist yet (fresh project), ask the user these que
 
 1. **iPhone devices** - Present these options and ask the user to choose:
 
-   - **6.9" only (recommended)** - `iPhone 17 Pro Max`. App Store Connect auto-fills the 6.5" slot from 6.9" screenshots, so this single device covers both. This is all most apps need.
-   - **6.9" + 6.5"** - Add `iPhone 11 Pro Max` or `iPhone Xs Max` if they want *distinct* screenshots in the 6.5" slot rather than the auto-scaled 6.9" ones. Note: no current simulator produces 6.5" (1242×2688) - only these older simulators do.
-   - **More sizes** - App Store Connect also has slots for 6.3", 6.1", 5.5", 4.7", 4", and 3.5". Ask if they want any of these. Corresponding simulators: `iPhone 17 Pro` (6.3"), `iPhone 16` (6.1"), `iPhone 8 Plus` (5.5"), `iPhone SE (3rd generation)` (4.7"). Sizes smaller than 4.7" are very old and rarely needed.
+   - **6.9" only (recommended)** - `iPhone 18 Pro Max`. iOS 27 runtimes (Xcode 27 or later) create it; iOS 26 runtimes create `iPhone 17 Pro Max` instead, which has the same screen and still works from Xcode 27 when an iOS 26 runtime is installed. Check `storescreens list` for which one is installed. App Store Connect auto-fills the 6.5" slot from 6.9" screenshots, so this single device covers both. This is all most apps need.
+   - **6.9" + 6.5"** - Add `iPhone 11 Pro Max` or `iPhone Xs Max` if they want *distinct* screenshots in the 6.5" slot rather than the auto-scaled 6.9" ones. Note: no current model produces a 6.5" size (1242×2688 or 1284×2778) - only older simulators do.
+   - **More sizes** - App Store Connect also has slots for 6.3", 6.1", 5.5", 4.7", 4", and 3.5". Ask if they want any of these. Corresponding simulators: `iPhone 18 Pro` (6.3"; `iPhone 17 Pro` on iOS 26 runtimes), `iPhone 17e` (6.1"), `iPhone 8 Plus` (5.5"), `iPhone SE (3rd generation)` (4.7"). Sizes smaller than 4.7" are very old and rarely needed.
    - **Skip iPhone for now** - valid choice; they can add iPhone later.
 
-   Note: App Store Connect has **no 6.7" slot** - do not suggest `iPhone 16 Plus`.
+   Note: App Store Connect has **no 6.7" slot**. Its `APP_IPHONE_67` display type is the 6.9" slot, and `iPhone 16 Plus` (1290x2796) screenshots land there too, so do not suggest it next to the Pro Max. Likewise do not suggest `iPhone Air` as an extra size: its 1260x2736 screenshots also go to the 6.9" slot (storescreens still labels its files `iPhone 6.3"`). Two devices in one slot means `submit` uploads only one device's screenshots there (the one with the largest screen). Do not put `iPhone Duo` in the main config; it needs its own config (see Step 3c).
 
 2. **Appearances** - Light mode only, or also dark mode?
 
@@ -149,6 +149,22 @@ App Store Connect iPad slots:
 - **12.9"**, **10.5"**, **9.7"** - legacy slots requiring older simulator runtimes; rarely needed
 
 If they want iPad, add the chosen simulators to `devices` in `storescreens.yml`. Also note: if their app has iPad support disabled in Xcode (Supported Destinations), they'll need to re-enable it there first (General tab → Supported Destinations → add iPad).
+
+---
+
+## Step 3c: iPhone Duo (optional, only if the user asks)
+
+The iPhone Duo is a foldable with an outer display (1398x2034, folded) and an inner display (2007x2853, open). Only set it up when the user asks for it:
+
+- Its simulator needs Xcode 27.1 beta or later plus the iOS 27.1 simulator runtime, which creates the `iPhone Duo` simulator. If they aren't installed, the user can run `xcodes install 27.1 Beta --experimental-unxip` in Terminal (it asks for their Apple ID and 2FA code, which you can't enter for them), then you can fetch the runtime with `DEVELOPER_DIR=/Applications/Xcode-27.1.0-Beta.app/Contents/Developer xcodebuild -downloadPlatform iOS` (no sign-in). storescreens uses whichever Xcode `xcode-select` or `DEVELOPER_DIR` selects, so keep the main config on the release Xcode and write a second config, e.g. `storescreens-duo.yml`, that copies `storescreens.yml` but lists only `- simulator: "iPhone Duo"` and sets its own `output_dir` (and `render.output_dir`, if rendering), because a successful capture replaces the previous output in its directory. Also remove the `search_preview` block from the copy: search previews never use Duo screenshots, so a Duo-only run would overwrite the main previews with empty tiles. Capture it with `--no-search-preview`, which guards against that even if the block is left in:
+
+  ```bash
+  DEVELOPER_DIR=/Applications/Xcode-27.1.0-Beta.app/Contents/Developer storescreens capture --config storescreens-duo.yml --no-search-preview
+  ```
+
+- The first launch of the Duo simulator can take several minutes (a known issue in Apple's beta). Don't treat a slow first boot as a hang.
+- The pose (folded or open) can't be set from the command line or from a UI test; Apple exposes it only in Xcode's Device Hub. The simulator boots folded, so captures come out as outer-display screenshots (1398x2034) unless the user opens it in Device Hub. Screenshots come from whichever display is active, and storescreens labels them `iPhone Duo outer` or `iPhone Duo inner` by pixel size (files `iPhone_Duo_outer_<name>.png` / `iPhone_Duo_inner_<name>.png`).
+- Tell the user App Store Connect doesn't accept iPhone Duo screenshots yet (Apple says later this year): `submit` skips them with a notice. The captures are still useful for checking the layout on both displays.
 
 ---
 
@@ -298,9 +314,11 @@ Pipe xcodebuild output to a log file so you can inspect errors:
 xcodebuild build-for-testing \
   -workspace MyApp.xcworkspace \
   -scheme MyApp \
-  -destination 'platform=iOS Simulator,name=iPhone 17 Pro' \
+  -destination 'platform=iOS Simulator,name=iPhone 18 Pro' \
   2>&1 | tee build.log
 ```
+
+Use a simulator name from the config, and check `storescreens list` for the names installed: iOS 27 runtimes create `iPhone 18 Pro`, iOS 26 runtimes `iPhone 17 Pro`. The Xcode version alone doesn't decide it, since Xcode 27 can still use an installed iOS 26 runtime.
 
 If this fails, check `build.log` for the full error output and fix before running capture.
 
@@ -327,7 +345,7 @@ When you need to verify a UI change visually, **do NOT run the full screenshot s
 If the simulator is already running your app:
 
 ```
-take_screenshot(simulator: "iPhone 17 Pro")
+take_screenshot(simulator: "iPhone 18 Pro")
 ```
 
 The image renders inline immediately. If no simulator name is given, it uses the first booted simulator.
@@ -335,15 +353,15 @@ The image renders inline immediately. If no simulator name is given, it uses the
 If the simulator is not booted:
 
 ```
-take_screenshot(simulator: "iPhone 17 Pro", boot: true)
+take_screenshot(simulator: "iPhone 18 Pro", boot: true)
 ```
 
 **Using the CLI (if MCP is not available):**
 
 ```bash
-storescreens screenshot --simulator "iPhone 17 Pro" --output screenshot.png
+storescreens screenshot --simulator "iPhone 18 Pro" --output screenshot.png
 # Boot variant:
-storescreens screenshot --simulator "iPhone 17 Pro" --boot --output screenshot.png
+storescreens screenshot --simulator "iPhone 18 Pro" --boot --output screenshot.png
 ```
 
 **If you need to navigate to a specific screen** that requires UI test interaction, the old approach still works: temporarily disable the main test, write a focused `testQuickVisual()` method, run `capture`, then clean up. But for a simple "what does the current screen look like" check, `take_screenshot` is much faster.
@@ -484,13 +502,15 @@ Apple licenses the bezel PSDs for use with their products. StoreScreens does not
 storescreens bezels import
 ```
 
-This auto-scans `/Volumes/` for Apple Design Resource DMGs, classifies PSDs by screen pixel dimensions, applies any `model_preference` / `colorway_preference` from `render.chrome`, and writes transparent-screen PNGs + JSON sidecars to `~/Library/Application Support/storescreens/bezels/` (user-global).
+This auto-scans `/Volumes/` for Apple Design Resource DMGs, classifies PSDs by screen pixel dimensions, and writes one transparent-screen PNG + JSON sidecar per screen size and orientation to `~/Library/Application Support/storescreens/bezels/` (user-global, shared by every project). When several PSDs fit one size, it ranks them with fixed defaults: a file name that states the orientation first, then model (Pro Max, Pro, Air, mini, any other), then the newer iPhone generation, then colorway (Space Black, Black, Night Sky, Natural Titanium, Silver, Space Gray, Deep Blue, any other), then file name. It does not read `render.chrome.model_preference` / `colorway_preference`. For a different finish, copy that PSD into an empty folder and import with `--volume <folder>`; only the sizes it covers are replaced.
+
+- The iPhone 18 DMG (18 Pro and Pro Max; Black, Silver, Glacier, Burgundy) imports like the iPhone 17 one. The screens are the same size, so when both DMGs are mounted the iPhone 18 artwork wins.
+- The iPhone Duo DMG imports `Inner Open Portrait/Landscape` (inner display) and `Outer Closed Portrait/Landscape` (outer display). Its `Outer Open` file is ignored; the outer display uses `Outer Closed Portrait`. Colorways are Night Sky and Star White.
 
 Flags:
 
-- `--volume PATH` - use an explicit mount path instead of auto-scanning. Repeatable.
+- `--volume PATH` - scan this one path (a mounted DMG or any folder of PSDs) instead of auto-scanning `/Volumes/`.
 - `--yes` - skip the "about to write N files, ok?" confirmation.
-- `--verbose` - log every PSD considered and why it won or lost.
 
 Inspect afterwards:
 
@@ -655,7 +675,7 @@ Then fill in per-slide caption text:
 
 **Highlights:** override color / weight / italic on literal substring matches. Case-sensitive. Applies to all occurrences in both title and subtitle. Each highlight sets any combination of `color`, `weight`, `italic`.
 
-**Chrome options:** `style: none | stroke | device | bezel`. `fit: width (default) | height | contain` controls how the device fills the canvas - `width` lets a tall device bleed past the bottom (classic App Store look). `corner_radius: auto` or a fixed px value. `device_colorway: dark (default) | silver | natural` picks the drawn frame's body color (used by `device` chrome and the bezel fallback). `bezel_fallback: device (default) | stroke | error` controls what `bezel` chrome does when no bezel is installed for a screenshot. `model_preference` and `colorway_preference` influence which bezel gets picked at `bezels import` time.
+**Chrome options:** `style: none | stroke | device | bezel` (`device` also draws iPhone Duo frames: the outer display with tight hinge-side corners and its camera, or the inner display). `fit: width (default) | height | contain` controls how the device fills the canvas - `width` lets a tall device bleed past the bottom (classic App Store look). `corner_radius: auto` or a fixed px value. `device_colorway: dark (default) | silver | natural` picks the drawn frame's body color (used by `device` chrome and the bezel fallback). `bezel_fallback: device (default) | stroke | error` controls what `bezel` chrome does when no bezel is installed for a screenshot. `model_preference` and `colorway_preference` are accepted but not read by anything yet: `bezels import` picks bezels with fixed defaults (see 9c).
 
 ### 9e. Iterate
 
@@ -902,8 +922,17 @@ This validates:
 - the `precheck` guideline rules over that metadata (see 10e3)
 - `release:` scheduling format, if configured (ISO 8601, exact hour, future date, type/date pairing)
 - every rendered PNG: dimensions match an App Store display type, file under Apple's 8 MB per-screenshot cap
+- every screenshot set: which device fills it, and that it stays within App Store Connect's 10 screenshots per set
 
 No writes happen. Inspect the output with the user before going live.
+
+The display type (App Store Connect slot) comes from each PNG's pixel size; the size table is in `references/config-reference.md`. Point these out to the user when they apply:
+
+- Two configured devices in the same slot (iPhone Air and iPhone 18 Pro Max in 6.9"; iPhone 17 Pro and iPhone 18 Pro in 6.3"): `submit` uploads the screenshots of the device with the largest screen in that slot (config order breaks ties between equal screens), uses that device for every locale, and prints a notice. Suggest dropping the other device.
+- More than 10 screenshots in one set: App Store Connect's limit is 10 per set, and the light and dark captures of one device share a set, so with both appearances keep it to 5 slides. A device over the limit is always reported as an error, so `submit` exits non-zero and submit-for-review is skipped; in that locale the next device in the slot still fills the set if it fits, and if none fits the set is left unchanged.
+- iPhone Duo screenshots: App Store Connect doesn't accept them yet, so `submit` skips them with a notice and uploads the rest.
+
+storescreens 3.11.3 and earlier sent 6.3" screenshots (iPhone 18 Pro, 17 Pro, 17) under a display type App Store Connect rejects, so those uploads failed with a 409. If the user hits that, have them upgrade (`brew upgrade storescreens`).
 
 ### 10g. Live upload
 
@@ -913,11 +942,11 @@ storescreens submit
 
 Reports per-locale metadata updates, per-(locale, display type) screenshot uploads, and any errors.
 
-**Destructive behaviour for screenshots:** each App Store Connect screenshot set is wiped and re-populated from the rendered manifest so the local render is always the source of truth. The manifest's order becomes the App Store display order. Metadata uploads are non-destructive PATCHes: only fields with a file in `metadata/<locale>/` are sent.
+**Destructive behavior for screenshots:** each App Store Connect screenshot set is wiped and re-populated from the rendered manifest so the local render is always the source of truth. The manifest's order becomes the App Store display order. Metadata uploads are non-destructive PATCHes: only fields with a file in `metadata/<locale>/` are sent.
 
 **Idempotent re-runs:** `submit` diffs before writing. For metadata it reads the current version-localization attributes and sends only fields that actually differ; a locale whose fields all match is skipped without a PATCH. For screenshots it reads each existing entry's `sourceFileChecksum` (MD5) and compares to the local render's MD5 in manifest order - if the set already matches, the wipe+reupload is skipped entirely. The report lists skipped locales with `count: 0` so re-running after a no-op release (e.g. re-submitting after a rejection without content changes) is cheap and observable.
 
-**Remind the user:** with the default `submit_for_review: false`, `submit` stops after the uploads. Open App Store Connect, navigate to the version, and click "Submit for Review" manually. To skip that step, set `submit_for_review: true` and `submit` will drive Apple's `reviewSubmissions` 3-step flow (create submission, add the version as an item, PATCH `submitted: true`) once screenshots and metadata upload cleanly. Before creating a new submission, `submit` runs a pre-flight cleanup: cancels any prior `UNRESOLVED_ISSUES` (rejected) submissions and any `READY_FOR_REVIEW` drafts that hold a different version, and adopts any `READY_FOR_REVIEW` draft that already has (or can take) the target version by finalizing it in place. This is what makes the reject + resubmit cycle painless and what recovers from a prior aborted submit that left an orphan draft. If a prior submission is `IN_REVIEW` or `WAITING_FOR_REVIEW`, `submit` refuses to auto-cancel and surfaces a loud error - cancel explicitly with `storescreens review-submissions cancel <id>` (the id appears in the error and in `storescreens status`) if the user really means to resubmit, then re-run `submit`. When `attach_build: true`, `submit` waits up to 20 minutes for Apple's build processing to finish before creating any review submission, so a same-session upload-build + submit pair works without a manual wait. The submission ID and final state appear in the report.
+**Remind the user:** with the default `submit_for_review: false`, `submit` stops after the uploads. Open App Store Connect, navigate to the version, and click "Submit for Review" manually. To skip that step, set `submit_for_review: true` and `submit` will drive Apple's `reviewSubmissions` 3-step flow (create submission, add the version as an item, PATCH `submitted: true`) once screenshots and metadata upload cleanly. If any screenshot set failed to upload or was refused (e.g. over the 10-per-set limit), `submit` skips the review submission and reports an error, so the version never goes to review with stale screenshots; iPhone Duo skips and devices left out of a shared slot don't block it. Before creating a new submission, `submit` runs a pre-flight cleanup: cancels any prior `UNRESOLVED_ISSUES` (rejected) submissions and any `READY_FOR_REVIEW` drafts that hold a different version, and adopts any `READY_FOR_REVIEW` draft that already has (or can take) the target version by finalizing it in place. This is what makes the reject + resubmit cycle painless and what recovers from a prior aborted submit that left an orphan draft. If a prior submission is `IN_REVIEW` or `WAITING_FOR_REVIEW`, `submit` refuses to auto-cancel and surfaces a loud error - cancel explicitly with `storescreens review-submissions cancel <id>` (the id appears in the error and in `storescreens status`) if the user really means to resubmit, then re-run `submit`. When `attach_build: true`, `submit` waits up to 20 minutes for Apple's build processing to finish before creating any review submission, so a same-session upload-build + submit pair works without a manual wait. The submission ID and final state appear in the report.
 
 ### 10h. Useful flags
 
@@ -953,7 +982,7 @@ To act on what `status` shows, use `storescreens review-submissions` (MCP: `revi
 
 `storescreens submit` uploads screenshots and metadata only; it does **not** build or upload the `.ipa`. For that, `storescreens upload-build` wraps `xcodebuild archive` -> `xcodebuild -exportArchive` -> `xcrun altool --upload-app` into one command, reusing the same ASC API key credentials.
 
-Key behaviour:
+Key behavior:
 
 - **Non-beta Xcode auto-selection.** Scans `/Applications` for `Xcode*.app`, excludes anything with "beta" in the path or icon, and pins `DEVELOPER_DIR` to the highest-version production Xcode. A beta `xcode-select -p` won't taint the archive. Override with `xcode_path:` in config or `--xcode-path`.
 - **Shared credentials.** Uses `~/.storescreens/asc-credentials.yml` (or `ASC_KEY_ID` / `ASC_ISSUER_ID` / `ASC_KEY_PATH` env vars) from Step 10a. The .p8 is written to a tmpdir as `AuthKey_<KEY_ID>.p8`, `API_PRIVATE_KEYS_DIR` is pointed at it, and the tmpdir is wiped after altool exits.
@@ -1168,9 +1197,9 @@ Or with a full path if not on `$PATH`:
 
 ```
 ● Building for testing…
-  ✓ iPhone 17 Pro Max [iPhone 6.9"] Home → storescreens-output/light/iPhone_6.9_Home.png
-  ✓ iPhone 17 Pro Max [iPhone 6.9"] Detail → storescreens-output/light/iPhone_6.9_Detail.png
-  ● Device complete: iPhone 17 Pro Max - 2 screenshots
+  ✓ iPhone 18 Pro Max [iPhone 6.9"] Home → storescreens-output/light/iPhone_6.9_Home.png
+  ✓ iPhone 18 Pro Max [iPhone 6.9"] Detail → storescreens-output/light/iPhone_6.9_Detail.png
+  ● Device complete: iPhone 18 Pro Max - 2 screenshots
 
 captureId: a1b2c3d4
 ```
@@ -1198,7 +1227,7 @@ If a capture run fails or screenshots are missing, always read the relevant log 
 - **iPad preflight errors** - wrap `.toolbarVisibility(.hidden, for: .tabBar)` with a `UIDevice` idiom check, or pass `--skip-check` for iPhone-only projects
 - **Build failures** - check `logs/build-for-testing.log` for the full compiler output
 - **"0 screenshots via filesystem" but tests passed** - the breadcrumb file `~/.storescreens-cache-dir` was missing or stale. This file tells the test's `takeScreenshot` helper where to write PNGs. Run `storescreens capture` again (v1.2.1+ writes the breadcrumb correctly). If the file is missing, create it manually: `echo "$PWD/.storescreens-cache" > ~/.storescreens-cache-dir`
-- **"Failed to install or launch the test runner" / `Busy ("Application failed preflight checks")`** - CoreSimulator was still busy with an `xcodebuild test` clone. Capture retries once by default (`--retries`), and each run first deletes the idle clones piled up in `~/Library/Developer/XCTestDevices` (every test run on the machine adds to that set, and CoreSimulator jams once a couple of dozen collect). To check or clear it by hand: `xcrun simctl --set ~/Library/Developer/XCTestDevices list devices` and `... delete <udid>`
+- **"Failed to install or launch the test runner" / `Busy ("Application failed preflight checks")`** - CoreSimulator was still busy with an `xcodebuild test` clone. Capture retries once by default (`--retries`), and each run first deletes the idle clones piled up in `~/Library/Developer/XCTestDevices` (every test run on the machine adds to that set, and CoreSimulator jams once a couple of dozen collect). Only xcodebuild's own clones are deleted; a same-named simulator of the user's on another runtime (e.g. the iOS 26 `iPhone 17` next to the iOS 27 one) is left alone. To check or clear it by hand: `xcrun simctl --set ~/Library/Developer/XCTestDevices list devices` and `... delete <udid>`
 - **Wrong/deleted test methods ran (stale DerivedData)** - when using persistent `derived_data_path`, the compiled test binary can become stale if test source files are edited. v1.3.0+ auto-detects this and cleans build products before building. If you see unexpected test methods running, manually clean: `rm -rf ~/.storescreens-cache/<MyApp>/Build/Products`. The `storescreens check` command also warns about stale DerivedData.
 
 ## Persistent DerivedData (STRONGLY RECOMMENDED)
