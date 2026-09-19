@@ -422,6 +422,8 @@ slides:
 
 The Greek render then uses GFS Didot to draw the Greek copy; every other locale keeps Cormorant Garamond.
 
+Every caption is also tagged with the locale it is rendered for, so glyphs the caption font lacks come from a fallback font for that language. For Chinese, Japanese and Korean with the `system` font that picks the right Han character forms (Japanese and each Chinese script draw some characters differently) regardless of the rendering Mac's own language. Use the array form of `caption_locales` to place line breaks in Chinese and Japanese, which can otherwise break between any two characters.
+
 Slide-level `title_style:` overrides keep working alongside `locale_overrides:`. The merge order is: top-level role defaults, then slide-level `title_style:` (field by field), then `locale_overrides:` for the matched locale on the merged role (field by field). So a slide can pick its own color while the role still carries the per-locale font swap.
 
 ## Markdown in captions
