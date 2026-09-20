@@ -134,6 +134,7 @@ images:
     position: above_title            # above_title | below_title | above_subtitle | below_subtitle
     align: center                    # left | center (default) | right
     max_height_pct: 8                # % of canvas height; default 8
+    top_padding_pct: 0               # extra band above; above_title only; default 0
     placement: first_only            # first_only | all | none
     nudge:                           # optional fine-tune offset
       x_pct: 0                       # positive = right, negative = left
@@ -148,6 +149,7 @@ images:
 | `position` | `above_title` | Slot for the overlay. `below_title` and `above_subtitle` are aliases for the same physical slot (the band between title and subtitle). When the slide has no subtitle, `above_subtitle` and `below_subtitle` collapse to "directly under the title". |
 | `align` | `center` | Horizontal alignment within the slot. |
 | `max_height_pct` | `8` | Image height as a percentage of canvas height. Width follows the source aspect. |
+| `top_padding_pct` | `0` | Extra band reserved above the image, as a percentage of canvas height. Honored by `above_title` only: that slot is anchored to the canvas edge, so it is the only one where padding above says anything the slot's own position does not. The slot grows to `max_height_pct + top_padding_pct` and the image centers inside it, so raising this pushes the caption and the device further down the canvas. |
 | `placement` | `first_only` for `above_title`, `all` otherwise | Per-slide visibility. `first_only` draws on slide 1 only; `all` on every slide; `none` disables. |
 | `nudge.x_pct` / `nudge.y_pct` | `0` | Canvas-percentage offset applied after slot placement. Positive x = right; positive y = up. |
 
@@ -155,7 +157,7 @@ images:
 
 When a caption is present, the `above_title` slot extends from the canvas top down to just above the caption block (separated by `caption.spacing_pct`). The image is centered in this slot, which gives roughly equal "canvas top -> image" and "image -> caption" gaps automatically. When `caption.nudge` or `caption.vertical_align` shifts the caption, the slot follows so image + caption read as a single visual unit.
 
-When there is no caption text, the slot collapses to the legacy canvas-top band sized to the image, so middle-slot-only configs keep their old layout.
+When there is no caption text, the slot collapses to the legacy canvas-top band, sized to the image plus any `top_padding_pct`, so middle-slot-only configs keep their old layout.
 
 This is a behavior change in 2.8.0. Pre-2.8 configs that used `images[].nudge.y_pct` to manually pull the logo down toward the caption can drop the nudge; the default already balances the gaps. To restore the old "logo glued to canvas top" look, set a positive `nudge.y_pct` to push the image back up.
 
@@ -294,6 +296,8 @@ logo:
 
 SVG and PNG both work. Variant-aware so dark-mode can use a different file.
 
+`max_height_pct` and `top_padding_pct` both carry over to the converted `above_title` image, so the logo is centered in a band of `max_height_pct + top_padding_pct`. `top_padding_pct` reaches the renderer again as of 3.13.0; between the move to overlay images and that release it was dropped in the conversion, so a config that set it got a band the size of the bare image.
+
 `nudge.x_pct` and `nudge.y_pct` are canvas-percentage offsets applied on top of the default center-top placement, the same scale as everything else in the render config, so a nudge stays the same relative position across device sizes.
 
 ## caption
@@ -324,6 +328,7 @@ caption:
   padding_pct: 5              # horizontal (left+right) inset for the whole caption block
 
   vertical_align: center      # top | center (default) | bottom - where the block sits in its band
+  equal_spacing: false        # true = equalize the vertical gaps above the device
   nudge:                      # fine-tune offset applied after vertical_align
     x_pct: 0                  # positive = right, negative = left
     y_pct: 0                  # positive = up, negative = down
@@ -332,6 +337,8 @@ caption:
 `vertical_align` defaults to `center` whether the field is present or absent: same value, same render. If a centered caption looks shifted toward the device anyway, that's the `chrome.padding_pct` inset (default 4%) sitting between the band's bottom and the visible bezel; centering is computed against the visible bezel top, but the inset still adds a small offset to the *apparent* gap below the caption. Lower `chrome.padding_pct` to tighten.
 
 `padding_pct` is a horizontal inset only (left + right). There is no vertical analogue; use `min_height_pct` to enlarge the band, `vertical_align` to choose where the block sits inside it, and `nudge.y_pct` for fine-tuned offset.
+
+`equal_spacing` makes every vertical gap above the device the same size, on any slide that has an `above_title` logo image. With a caption that is three gaps: canvas top -> logo, logo -> caption, caption -> device. On a caption-less slide, a hero carrying nothing but a wordmark, it is two: canvas top -> logo and logo -> device. The caption-less form needs 3.13.0 or newer; before that the feature required a caption and a hero wordmark stayed centered in its own band at the canvas edge, which reads as too high because the band takes no account of the chrome inset below it. The device never moves; only the logo, and the caption when there is one. Gaps are measured between visible edges (glyph ink, cap height, the device's screen content), not layout boxes. It declines with a warning on a caption-less slide that also has a `below_title` or `below_subtitle` overlay, since those are drawn into the space the gaps divide up. Default off.
 
 `min_font_size_pct` matters because captions auto-shrink to fit. The renderer steps the point size down between `font_size_pct` and `min_font_size_pct` until the lines fit `min_height_pct`. If you set `font_size_pct == min_font_size_pct` to lock a uniform size across slides, three things happen at the floor:
 
