@@ -46,7 +46,7 @@ app_store_connect:
 |-------|------|---------|-------|
 | `create_version` | string | - | **Required.** Target App Store version string (e.g. `1.2.0`). If the version doesn't exist in App Store Connect yet, it is created. Can be overridden on the CLI with `--version-override`. |
 | `screenshots` | bool | `true` | Upload rendered screenshots. Set to `false` for a metadata-only submit. Also controllable via `--skip-screenshots`; a flag only turns an upload off. Before 3.13.1 this key (and `metadata`) was parsed but ignored, so pass the flag on an older binary. |
-| `metadata` | bool | `true` | Upload per-locale metadata. Set to `false` for a screenshots-only submit. Also controllable via `--skip-metadata`. |
+| `metadata` | bool | `true` | Upload the per-locale `metadata/<locale>/*.txt` files. Set to `false` to leave them out; the other `app_store_connect` blocks (review_info, categories, age_rating, pricing, availability, release, attach_build) still apply. Also controllable via `--skip-metadata`. |
 | `submit_for_review` | bool | `false` | When `true`, `submit` drives Apple's `reviewSubmissions` 3-step flow (create submission, attach the version as an item, PATCH `submitted: true`) after screenshots and metadata have been uploaded successfully. The submission ID and final state (typically `WAITING_FOR_REVIEW`) are included in the report output. Submission runs only after the uploads succeed, so the version is complete when Apple picks it up: if any screenshot set failed to upload or was refused (e.g. more than 10 screenshots for one set), the review submission is skipped with an error; iPhone Duo skips and devices left out of a shared slot don't block it. Before creating a new submission, `submit` runs a cleanup-or-adopt pre-flight: any prior `UNRESOLVED_ISSUES` (rejected) submission is canceled via PATCH `canceled: true`; any stale `READY_FOR_REVIEW` draft is either adopted (when items already reference the target version, or items are empty so the version can be attached) or canceled (when items reference a different version). Adopted drafts are finalized in place rather than recreated, which is the only programmatic recovery from a prior aborted submit that left an empty orphan. If a prior submission is in `IN_REVIEW` or `WAITING_FOR_REVIEW`, `submit` refuses to auto-cancel and surfaces a loud error so you can decide whether to cancel explicitly (`storescreens review-submissions cancel <id> --wait`, then re-run `submit`). When `attach_build` is also `true`, `submit` polls `/v1/builds` for up to 20 minutes waiting for a VALID build before creating the review submission, so a same-session upload-build + submit pair works without a manual wait. Default is `false` because review submission is irreversible without reviewer intervention, so opt in explicitly when you are ready to ship. |
 | `platform` | string | `IOS` | ASC platform enum: `IOS`, `MAC_OS`, `TV_OS`, `VISION_OS`. Rarely needs override; derive from your app's actual platform. |
 
@@ -365,7 +365,7 @@ The command is non-destructive by default: it creates missing locale subdirector
 | `--dry-run` | Validate everything, write nothing. |
 | `--skip-screenshots` | Upload metadata only. |
 | `--skip-metadata` | Upload screenshots only. |
-| `--submit-for-review` / `--no-submit-for-review` | Override `app_store_connect.submit.submit_for_review` for this run. Use the positive form to trigger review submission without editing the yml; the negative form suppresses it even when the yml sets `true`. When neither flag is passed, the yml value is used. Combine with `--skip-screenshots --skip-metadata` to fire only the review submission against an already-uploaded version. |
+| `--submit-for-review` / `--no-submit-for-review` | Override `app_store_connect.submit.submit_for_review` for this run. Use the positive form to trigger review submission without editing the yml; the negative form suppresses it even when the yml sets `true`. When neither flag is passed, the yml value is used. Combine with `--skip-screenshots --skip-metadata` to re-trigger the review submission against an already-uploaded version; the other configured `app_store_connect` blocks still apply on that run. |
 
 ## Screenshot display types
 
@@ -396,7 +396,7 @@ Screenshot uploads are intentionally destructive so that the local rendered PNGs
 
 Metadata uploads are PATCHes. Only fields you included in `metadata/<locale>/` are sent; everything else in App Store Connect is left untouched. A locale with zero readable files is skipped entirely.
 
-If you do not want a locale's screenshots re-ordered or wiped, either omit that locale from `metadata/` (metadata side) or pass `--skip-screenshots` for that run.
+If you do not want the screenshots re-ordered or wiped, set `submit.screenshots: false` or pass `--skip-screenshots` for that run. The screenshot plan comes from the capture manifest, not from `metadata/`, so leaving a locale out of `metadata/` does not protect its screenshots.
 
 ## Idempotent re-runs
 

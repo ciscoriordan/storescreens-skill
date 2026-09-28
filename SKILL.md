@@ -953,7 +953,7 @@ Reports per-locale metadata updates, per-(locale, display type) screenshot uploa
 | Flag | Description |
 |------|-------------|
 | `--dry-run` | Validate everything, write nothing. Always run first. |
-| `--skip-screenshots` | Upload metadata only. Good for release-notes-only fixes. Before storescreens 3.13.1 the yml's `submit.screenshots: false` was ignored and every set was replaced, so on an older binary always pass this flag for a metadata-only run. |
+| `--skip-screenshots` | Upload metadata only. Good for release-notes-only fixes. Before storescreens 3.13.1 the yml's `submit.screenshots: false` was ignored and every set was re-synced to the local renders, so on an older binary always pass this flag for a metadata-only run. |
 | `--skip-metadata` | Upload screenshots only. Good when iterating on visuals. |
 | `--version-override 1.2.1` | Override `submit.create_version` for this run (creates the version if needed). |
 | `--render-dir PATH` | Override `render.output_dir` as the screenshot source. |
