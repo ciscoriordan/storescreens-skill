@@ -330,7 +330,7 @@ If none of the above is present, commands that need credentials throw `App Store
 | `storescreens auth logout` | Delete the stored credentials file. Env vars are untouched. |
 | `storescreens auth status` | Report active credential source and mint a JWT + hit `/v1/users` to verify the key works. |
 | `storescreens metadata init` | Scaffold `metadata/<locale>/` directories and write `metadata/README.md` containing the full field reference table. |
-| `storescreens submit --dry-run` | Validate credentials, app lookup, metadata directory, screenshot dimensions and 8MB size cap. No writes. |
+| `storescreens submit --dry-run` | Validate credentials, app lookup, version (exists or will be created), metadata directory, screenshot dimensions and 8MB size cap, and list every locale's screenshot sets. No writes. |
 | `storescreens submit` | Live upload. Destructive for screenshot sets (see below). |
 
 ### `auth init` flags
@@ -383,6 +383,7 @@ The number in each name is historical: `APP_IPHONE_67` holds the 6.9" class and 
 
 - **Several devices in one slot.** If configured devices produce screenshots for the same slot (iPhone Air and iPhone 18 Pro Max in 6.9"; iPhone 17 Pro and iPhone 18 Pro in 6.3"), `submit` uploads one device's screenshots for that slot and prints a notice naming the others. It picks the device with the largest screen in the slot (6.9": 1320x2868, then 1290x2796, then 1260x2736; 11" iPad: 1668x2420 first, 1488x2266 last); config order breaks ties between equal screens (iPhone 17 Pro and iPhone 18 Pro). The choice is made once per display type and holds for all locales; in a locale where the chosen device has more than 10 screenshots, the next device in that order is used, and the over-limit device is still reported as an error. Capture also warns when two devices write the same file names (iPhone 17 Pro and iPhone 18 Pro are both labeled `iPhone 6.3"`).
 - **10 screenshots per set.** App Store Connect holds at most 10 screenshots in one set, and the light and dark captures of one device share a set, so a device captured in both appearances fits only with 5 slides or fewer. A device over the limit is always an error: `submit` exits non-zero and `submit_for_review` is skipped, even when the next device in the slot fills the set. If no device in a slot fits, nothing is uploaded to that set for that locale (its current screenshots stay). `--dry-run` reports the same problem and exits non-zero.
+- **Sets the manifest leaves out.** `submit` uploads exactly what `manifest.json` lists, and `storescreens capture --locale <code>` rewrites that file with only the locales it captured. A locale in `locales:` with no manifest entries, and a locale missing a display type the other locales have, are reported by name; nothing is uploaded to those sets, so they keep what App Store Connect holds (nothing, for a locale new in this version, and the store then shows the primary locale's screenshots there). On a run that submits for review each one is an error: the other sets still upload, but `submit` exits non-zero and `submit_for_review` is skipped, and `--dry-run` exits non-zero too. On any other run each one is a warning. Before 3.13.2 these sets were skipped without a word.
 - **iPhone Duo.** App Store Connect doesn't accept iPhone Duo screenshots (1398x2034 outer, 2007x2853 inner) yet; Apple says upload support arrives later this year. `submit` skips them with a notice and does not fail.
 - **Older storescreens versions.** 3.11.3 and earlier uploaded 6.3" screenshots (iPhone 18 Pro, 17 Pro, 17, 16 Pro) and iPhone Air screenshots under `APP_IPHONE_63`, which App Store Connect doesn't define, so those uploads failed with a 409. Upgrade before submitting them.
 
@@ -420,13 +421,14 @@ Runs through:
 
 - credential resolution and JWT mint
 - app lookup (by `app_id` or `bundle_id`)
-- version find-or-create (read-only: reports whether it will create or update)
+- version lookup (read-only: reports whether the version exists, with its state, or will be created; a version already released, such as `READY_FOR_SALE`, fails the dry run)
 - per-locale metadata directory parse, including unknown-file warnings
 - category ids validated against `GET /v1/appCategories`
 - `release:` format checks (ISO 8601, exact hour, future date, type/date pairing)
-- the offline `precheck` guideline rules over the metadata files (other-platform mentions, placeholder text, profanity, field lengths, URL format)
+- the offline `precheck` guideline rules over the metadata files (other-platform mentions, placeholder text, profanity, field lengths, URL format). The profanity words are English and are checked in every locale, except where a word is ordinary in the locale's language: Danish and Swedish "slut" means "end" and is not flagged there (3.13.2 and later)
 - every rendered PNG: dimension match against App Store display types and the 8MB per-file cap
-- every screenshot set: which device fills it, and whether it fits App Store Connect's limit of 10 screenshots
+- every screenshot set: which device fills it, and whether it fits App Store Connect's limit of 10 screenshots, printed one line per locale with each display type, its count and its device
+- sets the manifest leaves out (see "Sets the manifest leaves out" above)
 
 No writes happen. Use this as your pre-flight before a live submit. For the guideline rules on their own, with more detail and an optional link-reachability pass, run `storescreens precheck` (`--check-urls`).
 
