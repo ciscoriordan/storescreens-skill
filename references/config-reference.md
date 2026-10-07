@@ -184,7 +184,9 @@ Common iPad simulators:
 | `--mode xctest\|simple` | Capture mode (default: `xctest`) |
 | `--config PATH` | Config file path (default: `storescreens.yml`) |
 | `--output DIR` | Override output directory |
-| `--locale LOCALE` | Override locales (repeatable) |
+| `--locale LOCALE` | Override locales (repeatable). Replaces only those locales' entries in `manifest.json` and keeps the other locales' (3.13.3 and later; earlier versions rewrote the file with only the captured locales) |
+| `--appearance APPEARANCE` | Override appearances (repeatable). Replaces only those appearances' entries in `manifest.json` |
+| `--only PREFIXES` | Capture only screenshots whose names start with these prefixes (comma-separated). The other screenshots stay in `manifest.json` |
 | `--retries N` | Retry failed test runs per device (default: 1) |
 | `--keep-alive` | Keep simulators running after capture |
 | `--skip-check` | Skip preflight source code check |
