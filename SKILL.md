@@ -1,9 +1,11 @@
 ---
 name: storescreens
-description: "Set up and run storescreens-cli to automate App Store screenshot capture for iOS apps: render captioned/framed App Store-ready screenshots with device bezels, markdown captions, and panoramic backgrounds; upload screenshots + per-locale metadata (name, subtitle, description, keywords, what's new, promotional text) to App Store Connect via the official API; translate that metadata into other languages with a bring-your-own DeepL key; and archive + upload the app binary (.ipa) to App Store Connect / TestFlight via xcodebuild + altool with a pinned non-beta Xcode. Also supports targeted screenshots for quick visual checks during development. Use this skill when the user wants to install or configure storescreens-cli, set up screenshot automation for an Xcode project, add UI tests that capture screenshots, write or update ScreenshotTests.swift, run storescreens capture, render framed/captioned App Store screenshots, install device bezels, iterate on caption text and styling, take a quick screenshot of the simulator ('show me what the app looks like'), configure App Store Connect API credentials (storescreens auth init / auth login, ASC API key), scaffold a metadata directory (storescreens metadata init), translate per-locale metadata into other languages with a DeepL API key (storescreens translate), upload screenshots to App Store Connect, submit metadata, push to App Store, update what's new / description / keywords for a release, archive and upload a build to TestFlight ('ship a new release build', storescreens upload-build, upload-build init, build the .ipa), submit a binary to App Store Connect, or troubleshoot screenshot automation or build upload."
+description: "Retired StoreScreens skill. Use Koubou for screenshot rendering and App Store Connect CLI for uploads and release workflows. Do not install or start new StoreScreens workflows."
 ---
 
 # storescreens
+
+> **Retired October 20, 2026.** This skill is no longer maintained. Do not follow the historical installation or release steps below for new work. Use [Koubou](https://github.com/bitomule/Koubou) and [App Store Connect CLI](https://asccli.sh/) instead.
 
 storescreens-cli runs XCUITest-based UI tests across simulators, extracts named `XCTAttachment` screenshots from the `.xcresult` bundle, and organizes them by device size. It also renders the raw captures into captioned, framed App Store Connect-ready screenshots (backgrounds, device bezels, markdown captions, per-slide highlights).
 
