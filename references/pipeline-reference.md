@@ -6,7 +6,9 @@
 | Layouts, frames, captions, fonts, localization, rendering | Koubou (`kou`) |
 | App Store Connect, Apple Ads, uploads, metadata, TestFlight, releases | ASC CLI (`asc`) |
 
-Raw PNG paths are relative to the directory containing StoreScreens' `manifest.json`. Use those images in Koubou's `content` image assets or HTML templates. Keep the application's Koubou configuration and templates in source control. Do not reinterpret already reviewed copy while changing tools.
+Koubou and ASC CLI are recommendations, not dependencies of StoreScreens. Other screenshot renderers and App Store Connect command-line tools can consume the raw PNGs too. Preserve the application's tooling decisions.
+
+Raw PNG paths are relative to the directory containing StoreScreens' `manifest.json`. Use those images in Koubou's `content` image assets or HTML templates. Keep the application's rendering configuration and templates in source control. Do not reinterpret already reviewed copy while changing tools.
 
 Run `kou generate koubou.yml`, inspect all required output sets, and use `asc screenshots upload --help` for the current upload flags. Upload only after reviewing the images and intended target version. StoreScreens does not run an automatic upload or modify App Store Connect state.
 
