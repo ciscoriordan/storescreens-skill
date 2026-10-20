@@ -2,7 +2,7 @@
 
 `storescreens upload-build` wraps `xcodebuild archive` -> `xcodebuild -exportArchive` -> `xcrun altool --upload-app` into one step, pinning `DEVELOPER_DIR` to a production (non-beta) Xcode so a beta `xcode-select -p` can't taint the archive.
 
-It shares ASC API key credentials with `submit`: if `auth status` works for submit, it works here.
+It shares ASC API key credentials with `submit`: if `auth status` works for submit, it works here. With provisioning updates enabled, both archive and export use that key to authenticate with the developer portal; no Apple account in Xcode's Accounts settings is required for API-key provisioning.
 
 ## Top-level shape
 
@@ -52,7 +52,7 @@ app_store_connect:
 | `strip_swift_symbols` | bool | `true` | Whether to strip Swift symbols from the binary. |
 | `xcode_path` | string | auto-detected | Override the `DEVELOPER_DIR` Xcode. Accepts `/Applications/Xcode.app` or `/Applications/Xcode.app/Contents/Developer`. If omitted, storescreens scans `/Applications/Xcode*.app`, excludes any path with "beta" in the name or Info.plist icon, and picks the highest-version remaining install. |
 | `export_options_plist` | string | - | Path to a hand-crafted `ExportOptions.plist`. When set, storescreens skips generating one and passes your plist to `-exportArchive` verbatim. Relative paths resolve against the directory containing `storescreens.yml`. |
-| `allow_provisioning_updates` | bool | `true` | Passes `-allowProvisioningUpdates` at archive and export time, letting Xcode contact the Apple dev portal to create or download missing profiles and certs during the run. Turn this off in air-gapped / fully manual setups. |
+| `allow_provisioning_updates` | bool | `true` | Passes `-allowProvisioningUpdates` and the resolved ASC API-key authentication arguments at archive and export time, letting Xcode create or download missing profiles and certificates. Turn this off to omit both provisioning updates and authentication arguments in fully manual setups. |
 | `destination` | string | `generic/platform=iOS` | xcodebuild `-destination` flag for the archive. For tvOS/visionOS/macOS apps, change accordingly. |
 | `output_dir` | string | `./build` | Where the `.xcarchive` and exported `.ipa` are written. Relative paths resolve against the yml directory. |
 | `skip_upload` | bool | `false` | Archive + export + stop. Useful for producing an `.ipa` for manual distribution, inspection, or a different upload pipeline. Skipping upload also skips the pre-archive version check. |
@@ -158,6 +158,8 @@ Same resolution order as `submit` (see `submit-reference.md`):
 
 1. Environment variables `ASC_KEY_ID`, `ASC_ISSUER_ID`, `ASC_KEY_PATH` (all three must be set together).
 2. `~/.storescreens/asc-credentials.yml`.
+
+Credentials are resolved once for version checks, Xcode provisioning, and upload. With `allow_provisioning_updates: true`, archive and export receive `-authenticationKeyPath`, `-authenticationKeyID`, and `-authenticationKeyIssuerID`. The key is written to a private temporary directory for each Xcode operation and removed afterward, including on failure. With `--skip-upload`, configured API credentials still support provisioning; if no API credentials are configured, Xcode can use an account already added in its Accounts settings.
 
 altool has its own constraint: the `.p8` file must be named `AuthKey_<KEY_ID>.p8` and live under `./private_keys`, `~/private_keys`, `~/.private_keys`, `~/.appstoreconnect/private_keys`, or the dir pointed to by `$API_PRIVATE_KEYS_DIR`. storescreens writes the PEM into a fresh `NSTemporaryDirectory()` subdir as `AuthKey_<KEY_ID>.p8`, points `API_PRIVATE_KEYS_DIR` at it, and removes the dir in a `defer` block - matching fastlane's `AltoolTransporterExecutor`.
 
