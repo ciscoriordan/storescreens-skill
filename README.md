@@ -1,3 +1,5 @@
+![StoreScreens — XCUITest Screenshot Orchestration](assets/banner.png)
+
 # StoreScreens capture skill
 
 Agent instructions for [StoreScreens](https://github.com/ciscoriordan/storescreens-cli) version 4: simulator setup, XCUITest orchestration, and raw screenshot collection.

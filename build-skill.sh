@@ -20,6 +20,7 @@ OUT="storescreens.skill"
 TEMPLATE="../storescreens-cli/Sources/storescreens-cli/Resources/ScreenshotTests.swift.template"
 if [[ -f "$TEMPLATE" ]]; then
     cp "$TEMPLATE" assets/ScreenshotTests.swift.template
+    cp ../storescreens-cli/assets/banner.png assets/banner.png
 fi
 STAGE="$(mktemp -d)"
 trap 'rm -rf "$STAGE"' EXIT
