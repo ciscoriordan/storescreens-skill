@@ -17,16 +17,18 @@ set -euo pipefail
 cd "$(dirname "$0")"
 
 OUT="storescreens.skill"
+TEMPLATE="../storescreens-cli/Sources/storescreens-cli/Resources/ScreenshotTests.swift.template"
+if [[ -f "$TEMPLATE" ]]; then
+    cp "$TEMPLATE" assets/ScreenshotTests.swift.template
+fi
 STAGE="$(mktemp -d)"
 trap 'rm -rf "$STAGE"' EXIT
 
 # Files the skill actually needs, relative to the repo root.
 CONTENTS=(
     SKILL.md
-    references/config-reference.md
-    references/render-reference.md
-    references/submit-reference.md
-    references/upload-build-reference.md
+    references/capture-reference.md
+    references/pipeline-reference.md
     assets/ScreenshotTests.swift.template
 )
 
