@@ -18,6 +18,8 @@ test_class: ScreenshotTests
 
 Use `workspace` instead of `project` when appropriate. `devices[].tests` can restrict individual devices to selected test methods. `screenshot_appearances: {Home: dark}` pins a named screen; other screens use the configured appearances. Keep reviewed locale and size coverage when changing configuration.
 
+Set `code_signing_allowed: true` for apps whose Keychain or app-group access requires signed simulator entitlements. The default unsigned build can otherwise change the app's access state, including showing a purchase screen instead of the expected content. Use the project's signing configuration; capture does not need App Store Connect credentials.
+
 `storescreens prepare` boots the configured simulators and configures status bars. `--app MyApp.app` additionally installs an existing simulator build. `capture` builds and runs XCUITests, collecting filesystem PNGs by default; `--xcresult` exports attachments instead. Test code must save named screenshots through the generated harness or a compatible existing helper.
 
 `capture --locale el`, `--appearance dark`, and `--only Home,Search` narrow the run while preserving other manifest entries. `--no-parallel` runs one device at a time; `--retries N` retries failed device runs. `derived_data_path` preserves build products. `result_bundle_dir` retains result bundles in a unique directory per invocation, including for failure diagnosis.
