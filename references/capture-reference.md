@@ -1,5 +1,7 @@
 # Capture reference
 
+MCP `capture` accepts `locales`, `appearances`, `only`, `no_parallel`, and `retries`. Use these fields for partial reruns without replacing the application's saved configuration. A failed test fails the capture even when it wrote PNGs, and leaves the previous successful output intact.
+
 Run from the application project directory. `storescreens init` discovers the project and available simulators; `storescreens setup` generates tests. Existing validated test flows remain authoritative.
 
 ```yaml

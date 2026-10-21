@@ -12,4 +12,6 @@ Install the skill from this repository using your agent's skill installer, or us
 
 Run `bash build-skill.sh` after changing the instructions or references. The build also synchronizes the XCUITest template from the sibling `storescreens-cli` checkout when available, so the generated tests and packaged skill use the same harness.
 
+StoreScreens 4.0.1 supports partial MCP captures and rejects failed tests before publishing images. See the [complete MCP and Koubou example](https://github.com/ciscoriordan/storescreens-cli/tree/main/examples) for a runnable client, failure recovery, and rendering the collected PNGs.
+
 MIT.
