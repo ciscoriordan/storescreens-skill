@@ -1,4 +1,4 @@
-![StoreScreens — XCUITest Screenshot Orchestration](assets/banner.png?v=logo)
+![StoreScreens — XCUITest Screenshot Orchestration](assets/banner.png?v=interfaces)
 
 # StoreScreens capture skill
 
