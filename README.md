@@ -4,6 +4,8 @@
 
 Agent instructions for [StoreScreens](https://github.com/ciscoriordan/storescreens-cli) version 4: simulator setup, XCUITest orchestration, and raw screenshot collection.
 
+StoreScreens 4.1 adds Apple Watch capture through CLI and MCP, including Watch app schemes, watchOS UI tests, and optional paired iPhone companions. See the [Watch setup instructions](https://github.com/ciscoriordan/storescreens-cli#apple-watch); the skill's capture reference covers the same configuration.
+
 Use your preferred screenshot renderer and App Store Connect command-line tool. We recommend [Koubou](https://github.com/bitomule/Koubou) for screenshot composition and rendering, and [ASC CLI](https://asccli.sh/) for App Store Connect management and uploads. Neither is required for capture. Version 4 removes the former built-in renderer, App Store Connect client, and Wall of Apps functionality.
 
 ## Install
